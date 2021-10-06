@@ -1,7 +1,5 @@
-const { constants } = require("@openzeppelin/test-helpers");
-const { ZERO_ADDRESS } = constants;
-const { expect } = require("chai");
-const { ethers } = require("hardhat");
+import { expect } from "chai";
+import { ethers, upgrades } from "hardhat";
 
 describe("Marketplace and Soundchain Token", () => {
   const firstTokenId = "0";
@@ -11,12 +9,12 @@ describe("Marketplace and Soundchain Token", () => {
   const newPrice = "500000000000000000";
   const tokenUri = "ipfs";
 
-  let owner, minter, buyer, nft;
+  let owner, minter, buyer, nft, feeAddress, marketplace;
 
   beforeEach(async () => {
     [owner, minter, buyer, feeAddress] = await ethers.getSigners();
 
-    SoundchainCollectible = await ethers.getContractFactory(
+    const SoundchainCollectible = await ethers.getContractFactory(
       "SoundchainCollectible"
     );
     nft = await SoundchainCollectible.deploy();
@@ -24,7 +22,7 @@ describe("Marketplace and Soundchain Token", () => {
     const MarketplaceFactory = await ethers.getContractFactory(
       "SoundchainMarketplace"
     );
-    this.marketplace = await upgrades.deployProxy(MarketplaceFactory, [
+    marketplace = await upgrades.deployProxy(MarketplaceFactory, [
       feeAddress.address,
       platformFee,
     ]);
@@ -36,29 +34,21 @@ describe("Marketplace and Soundchain Token", () => {
   describe("Listing Item", () => {
     it("reverts when not owning NFT", async () => {
       expect(
-        this.marketplace.listItem(
-          nft.address,
-          firstTokenId,
-          "1",
-          pricePerItem,
-          "0"
-        )
+        marketplace.listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
       ).to.be.revertedWith("not owning item");
     });
 
     it("reverts when not approved", async () => {
       expect(
-        this.marketplace
+        marketplace
           .connect(minter)
           .listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
       ).to.be.revertedWith("item not approved");
     });
 
     it("successfully lists item", async () => {
-      await nft
-        .connect(minter)
-        .setApprovalForAll(this.marketplace.address, true);
-      await this.marketplace.connect(minter).listItem(
+      await nft.connect(minter).setApprovalForAll(marketplace.address, true);
+      await marketplace.connect(minter).listItem(
         nft.address,
         firstTokenId,
         "1",
@@ -71,10 +61,8 @@ describe("Marketplace and Soundchain Token", () => {
 
   describe("Canceling Item", () => {
     beforeEach(async () => {
-      await nft
-        .connect(minter)
-        .setApprovalForAll(this.marketplace.address, true);
-      await this.marketplace.connect(minter).listItem(
+      await nft.connect(minter).setApprovalForAll(marketplace.address, true);
+      await marketplace.connect(minter).listItem(
         nft.address,
         firstTokenId,
         "1",
@@ -86,18 +74,18 @@ describe("Marketplace and Soundchain Token", () => {
 
     it("reverts when item is not listed", async () => {
       await expect(
-        this.marketplace.cancelListing(nft.address, secondTokenId)
+        marketplace.cancelListing(nft.address, secondTokenId)
       ).to.be.revertedWith("not listed item");
     });
 
     it("reverts when not owning the item", async () => {
       await expect(
-        this.marketplace.cancelListing(nft.address, firstTokenId)
+        marketplace.cancelListing(nft.address, firstTokenId)
       ).to.be.revertedWith("not listed item"); // TODO: investigate if there is another way to have the mapping without the owner, here should be not owning item
     });
 
     it("successfully cancel the item", async () => {
-      await this.marketplace
+      await marketplace
         .connect(minter)
         .cancelListing(nft.address, firstTokenId);
     });
@@ -105,10 +93,8 @@ describe("Marketplace and Soundchain Token", () => {
 
   describe("Updating Item Price", () => {
     beforeEach(async () => {
-      await nft
-        .connect(minter)
-        .setApprovalForAll(this.marketplace.address, true);
-      await this.marketplace.connect(minter).listItem(
+      await nft.connect(minter).setApprovalForAll(marketplace.address, true);
+      await marketplace.connect(minter).listItem(
         nft.address,
         firstTokenId,
         "1",
@@ -120,18 +106,18 @@ describe("Marketplace and Soundchain Token", () => {
 
     it("reverts when item is not listed", async () => {
       await expect(
-        this.marketplace.updateListing(nft.address, secondTokenId, newPrice)
+        marketplace.updateListing(nft.address, secondTokenId, newPrice)
       ).to.be.revertedWith("not listed item");
     });
 
     it("reverts when not owning the item", async () => {
       await expect(
-        this.marketplace.updateListing(nft.address, firstTokenId, newPrice)
+        marketplace.updateListing(nft.address, firstTokenId, newPrice)
       ).to.be.revertedWith("not listed item"); // TODO: investigate if there is another way to have the mapping without the owner, here should be not owning item
     });
 
     it("successfully update the item", async () => {
-      await this.marketplace
+      await marketplace
         .connect(minter)
         .updateListing(nft.address, firstTokenId, newPrice);
     });
@@ -139,10 +125,8 @@ describe("Marketplace and Soundchain Token", () => {
 
   describe("Buying Item", () => {
     beforeEach(async () => {
-      await nft
-        .connect(minter)
-        .setApprovalForAll(this.marketplace.address, true);
-      await this.marketplace.connect(minter).listItem(
+      await nft.connect(minter).setApprovalForAll(marketplace.address, true);
+      await marketplace.connect(minter).listItem(
         nft.address,
         firstTokenId,
         "1",
@@ -157,15 +141,15 @@ describe("Marketplace and Soundchain Token", () => {
         .connect(minter)
         .transferFrom(minter.address, owner.address, firstTokenId);
       await expect(
-        this.marketplace.buyItem(nft.address, firstTokenId, minter.address, {
+        marketplace.buyItem(nft.address, firstTokenId, minter.address, {
           value: pricePerItem,
         })
       ).to.be.revertedWith("not owning item");
     });
 
     it("reverts when buying before the scheduled time", async () => {
-      await nft.setApprovalForAll(this.marketplace.address, true);
-      await this.marketplace.listItem(
+      await nft.setApprovalForAll(marketplace.address, true);
+      await marketplace.listItem(
         nft.address,
         secondTokenId,
         "1",
@@ -174,7 +158,7 @@ describe("Marketplace and Soundchain Token", () => {
         2 ** 50
       );
       await expect(
-        this.marketplace
+        marketplace
           .connect(buyer)
           .buyItem(nft.address, secondTokenId, owner.address, {
             value: pricePerItem,
@@ -184,7 +168,7 @@ describe("Marketplace and Soundchain Token", () => {
 
     it("reverts when the amount is not enough", async () => {
       await expect(
-        this.marketplace
+        marketplace
           .connect(buyer)
           .buyItem(nft.address, firstTokenId, minter.address)
       ).to.be.revertedWith("insufficient balance to buy");
@@ -192,7 +176,7 @@ describe("Marketplace and Soundchain Token", () => {
 
     it("successfully purchase item", async () => {
       await expect(() =>
-        this.marketplace
+        marketplace
           .connect(buyer)
           .buyItem(nft.address, firstTokenId, minter.address, {
             value: pricePerItem,
