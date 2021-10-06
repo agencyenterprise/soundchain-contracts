@@ -4,3 +4,5 @@ node_modules
 /cache
 /.openzeppelin
 typechain
+coverage
+coverage.json
