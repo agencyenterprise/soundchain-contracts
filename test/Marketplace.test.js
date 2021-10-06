@@ -15,13 +15,6 @@ describe("Marketplace and Soundchain Token", () => {
 
   beforeEach(async () => {
     [owner, minter, buyer, feeAddress] = await ethers.getSigners();
-    const BundleMarketplaceFactory = await ethers.getContractFactory(
-      "SoundchainBundleMarketplace"
-    );
-    this.bundleMarketplace = await upgrades.deployProxy(
-      BundleMarketplaceFactory,
-      [feeAddress.address, platformFee]
-    );
 
     SoundchainCollectible = await ethers.getContractFactory(
       "SoundchainCollectible"
@@ -35,15 +28,6 @@ describe("Marketplace and Soundchain Token", () => {
       feeAddress.address,
       platformFee,
     ]);
-
-    SoundchainAddressRegistry = await ethers.getContractFactory(
-      "SoundchainAddressRegistry"
-    );
-    this.addressRegistry = await SoundchainAddressRegistry.deploy();
-    await this.addressRegistry.updateMarketplace(this.marketplace.address);
-    await this.addressRegistry.updateBundleMarketplace(
-      this.bundleMarketplace.address
-    );
 
     await nft.safeMint(minter.address, tokenUri);
     await nft.safeMint(owner.address, tokenUri);

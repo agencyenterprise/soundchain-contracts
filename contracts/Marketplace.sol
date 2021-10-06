@@ -11,17 +11,6 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
 
-interface ISoundchainAddressRegistry {
-    function bundleMarketplace() external view returns (address);
-}
-
-interface ISoundchainBundleMarketplace {
-    function validateItemSold(
-        address,
-        uint256,
-        uint256
-    ) external;
-}
 
 contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeMath for uint256;
@@ -93,16 +82,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     /// @notice NftAddress -> Royalty
     mapping(address => CollectionRoyalty) public collectionRoyalties;
 
-    /// @notice Address registry
-    ISoundchainAddressRegistry public addressRegistry;
-
-    modifier onlyMarketplace() {
-        require(
-            address(addressRegistry.bundleMarketplace()) == _msgSender(),
-            "sender must be bundle marketplace"
-        );
-        _;
-    }
 
     modifier isListed(
         address _nftAddress,
@@ -349,8 +328,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
                 bytes("")
             );
         }
-        // ISoundchainBundleMarketplace(addressRegistry.bundleMarketplace())
-        //     .validateItemSold(_nftAddress, _tokenId, listedItem.quantity);
 
         emit ItemSold(
             _owner,
@@ -458,29 +435,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     {
         feeRecipient = _platformFeeRecipient;
         emit UpdatePlatformFeeRecipient(_platformFeeRecipient);
-    }
-
-    /**
-     @notice Update SoundchainAddressRegistry contract
-     @dev Only admin
-     */
-    function updateAddressRegistry(address _registry) external onlyOwner {
-        addressRegistry = ISoundchainAddressRegistry(_registry);
-    }
-
-    /**
-     * @notice Validate and cancel listing
-     * @dev Only bundle marketplace can access
-     */
-    function validateItemSold(
-        address _nftAddress,
-        uint256 _tokenId,
-        address _seller
-    ) external onlyMarketplace {
-        Listing memory item = listings[_nftAddress][_tokenId][_seller];
-        if (item.quantity > 0) {
-            _cancelListing(_nftAddress, _tokenId, _seller);
-        }
     }
 
     ////////////////////////////
