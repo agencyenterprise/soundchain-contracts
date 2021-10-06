@@ -3,12 +3,15 @@ import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-solhint";
 import "@nomiclabs/hardhat-waffle";
 import "@openzeppelin/hardhat-upgrades";
+import dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 
-// const PRIVATE_KEY = process.env.PRIVATE_KEY;
+dotenv.config();
+
+const { PRIVATE_KEY, ETHERSCAN_API_KEY } = process.env;
 
 const config: HardhatUserConfig = {
   solidity: {
@@ -29,21 +32,19 @@ const config: HardhatUserConfig = {
     tests: "./test",
   },
   networks: {
-    hardhat: {
-      blockGasLimit: 20000000,
-    },
     mumbai: {
       url:
-        "https://polygon-mumbai.g.alchemy.com/v2/q5_h_8LI6tg6eVk234iKqKm6H4JGS-Zy",
+        "https://polygon-mumbai.g.alchemy.com/v2/iRRgkrOCET0SiKBdl1aYA_TkV9-nI4WW",
+      accounts: [`0x${PRIVATE_KEY}`],
+      gasPrice: 8000000000,
     },
     polygon: {
-      url:
-        "https://polygon-mainnet.g.alchemy.com/v2/JRptRNLZzr65CeN9PyapuBIFbFMu7CtM",
-      gasMultiplier: 2,
+      url: "",
+      accounts: [`0x${PRIVATE_KEY}`],
     },
   },
   etherscan: {
-    apiKey: "46DD6NK19R2AZQQIJIY1FXR85HKM2XSNBE",
+    apiKey: ETHERSCAN_API_KEY,
   },
 };
 

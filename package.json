@@ -4,9 +4,9 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "compile-contracts": "npx hardhat compile",
-    "deploy-contracts": "npx hardhat run scripts/deploy.js --network mumbai",
-    "deploy-contracts:mainnet": "npx hardhat run scripts/deploy.js --network polygon",
+    "compile": "npx hardhat compile",
+    "deploy:testnet": "npx hardhat run scripts/deploy.ts --network mumbai",
+    "deploy:mainnet": "npx hardhat run scripts/deploy.ts --network polygon",
     "test": "npx hardhat test"
   },
   "devDependencies": {
