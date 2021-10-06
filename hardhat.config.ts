@@ -1,8 +1,9 @@
-// require("dotenv").config();
+import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-solhint";
 import "@nomiclabs/hardhat-waffle";
 import "@openzeppelin/hardhat-upgrades";
+import "@typechain/hardhat";
 import dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
