@@ -1,4 +1,6 @@
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { Contract } from "ethers";
 import { ethers, upgrades } from "hardhat";
 
 describe("Marketplace and Soundchain Token", () => {
@@ -9,7 +11,12 @@ describe("Marketplace and Soundchain Token", () => {
   const newPrice = "500000000000000000";
   const tokenUri = "ipfs";
 
-  let owner, minter, buyer, nft, feeAddress, marketplace;
+  let owner: SignerWithAddress,
+    minter: SignerWithAddress,
+    buyer: SignerWithAddress,
+    nft: Contract,
+    feeAddress: SignerWithAddress,
+    marketplace: Contract;
 
   beforeEach(async () => {
     [owner, minter, buyer, feeAddress] = await ethers.getSigners();
