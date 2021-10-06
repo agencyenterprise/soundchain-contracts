@@ -5,8 +5,6 @@ pragma solidity ^0.8.0;
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -38,7 +36,6 @@ contract SoundchainBundleMarketplace is
 {
     using SafeMath for uint256;
     using AddressUpgradeable for address payable;
-    using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.Bytes32Set;
 
     /// @notice Events for the contract
@@ -53,7 +50,6 @@ contract SoundchainBundleMarketplace is
         address indexed seller,
         address indexed buyer,
         string bundleID,
-        address payToken,
         int256 unitPrice,
         uint256 price
     );
@@ -70,7 +66,6 @@ contract SoundchainBundleMarketplace is
     event OfferCreated(
         address indexed creator,
         string bundleID,
-        address payToken,
         uint256 price,
         uint256 deadline
     );
@@ -90,7 +85,6 @@ contract SoundchainBundleMarketplace is
 
     /// @notice Structure for bundle offer
     struct Offer {
-        IERC20 payToken;
         uint256 price;
         uint256 deadline;
     }
@@ -345,33 +339,22 @@ contract SoundchainBundleMarketplace is
 
         uint256 price = listing.price;
         uint256 feeAmount = price.mul(platformFee).div(1e3);
-        if (_payToken == address(0)) {
-            (bool feeTransferSuccess, ) = feeReceipient.call{value: feeAmount}(
-                ""
-            );
-            require(
-                feeTransferSuccess,
-                "SoundchainMarketplace: Fee transfer failed"
-            );
-            (bool ownerTransferSuccess, ) = owner.call{
-                value: price.sub(feeAmount)
-            }("");
-            require(
-                ownerTransferSuccess,
-                "SoundchainMarketplace: Owner transfer failed"
-            );
-        } else {
-            IERC20(_payToken).safeTransferFrom(
-                _msgSender(),
-                feeReceipient,
-                feeAmount
-            );
-            IERC20(_payToken).safeTransferFrom(
-                _msgSender(),
-                owner,
-                price.sub(feeAmount)
-            );
-        }
+
+        (bool feeTransferSuccess, ) = feeReceipient.call{value: feeAmount}(
+            ""
+        );
+        require(
+            feeTransferSuccess,
+            "SoundchainMarketplace: Fee transfer failed"
+        );
+        (bool ownerTransferSuccess, ) = owner.call{
+            value: price.sub(feeAmount)
+        }("");
+        require(
+            ownerTransferSuccess,
+            "SoundchainMarketplace: Owner transfer failed"
+        );
+
 
         // Transfer NFT to buyer
         for (uint256 i; i < listing.nfts.length; i++) {
@@ -407,7 +390,6 @@ contract SoundchainBundleMarketplace is
             owner,
             _msgSender(),
             _bundleID,
-            _payToken,
             ISoundchainMarketplace(addressRegistry.marketplace()).getPrice(_payToken),
             price
         );
@@ -416,12 +398,10 @@ contract SoundchainBundleMarketplace is
 
     /// @notice Method for offering bundle item
     /// @param _bundleID Bundle ID
-    /// @param _payToken Paying token
     /// @param _price Price
     /// @param _deadline Offer expiration
     function createOffer(
         string memory _bundleID,
-        IERC20 _payToken,
         uint256 _price,
         uint256 _deadline
     ) external {
@@ -433,12 +413,11 @@ contract SoundchainBundleMarketplace is
         Offer memory offer = offers[bundleID][_msgSender()];
         require(offer.deadline <= _getNow(), "offer exists");
 
-        offers[bundleID][_msgSender()] = Offer(_payToken, _price, _deadline);
+        offers[bundleID][_msgSender()] = Offer(_price, _deadline);
 
         emit OfferCreated(
             _msgSender(),
             _bundleID,
-            address(_payToken),
             _price,
             _deadline
         );
@@ -468,12 +447,12 @@ contract SoundchainBundleMarketplace is
         uint256 price = offer.price;
         uint256 feeAmount = price.mul(platformFee).div(1e3);
 
-        offer.payToken.safeTransferFrom(_creator, feeReceipient, feeAmount);
-        offer.payToken.safeTransferFrom(
-            _creator,
-            _msgSender(),
-            price.sub(feeAmount)
-        );
+        // offer.payToken.safeTransferFrom(_creator, feeReceipient, feeAmount);
+        // offer.payToken.safeTransferFrom(
+        //     _creator,
+        //     _msgSender(),
+        //     price.sub(feeAmount)
+        // );
 
         // Transfer NFT to buyer
         Listing memory listing = listings[_msgSender()][bundleID];
@@ -510,8 +489,7 @@ contract SoundchainBundleMarketplace is
             _msgSender(),
             _creator,
             _bundleID,
-            address(offer.payToken),
-            ISoundchainMarketplace(addressRegistry.marketplace()).getPrice(address(offer.payToken)),
+            ISoundchainMarketplace(addressRegistry.marketplace()).getPrice(address(0)),
             offer.price
         );
         emit OfferCanceled(_creator, _bundleID);

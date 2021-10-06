@@ -6,7 +6,6 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
@@ -27,7 +26,6 @@ interface ISoundchainBundleMarketplace {
 contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable {
     using SafeMath for uint256;
     using AddressUpgradeable for address payable;
-    using SafeERC20 for IERC20;
 
     /// @notice Events for the contract
     event ItemListed(
@@ -35,7 +33,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         address indexed nft,
         uint256 tokenId,
         uint256 quantity,
-        address payToken,
         uint256 pricePerItem,
         uint256 startingTime
     );
@@ -45,15 +42,12 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         address indexed nft,
         uint256 tokenId,
         uint256 quantity,
-        address payToken,
-        int256 unitPrice,
         uint256 pricePerItem
     );
     event ItemUpdated(
         address indexed owner,
         address indexed nft,
         uint256 tokenId,
-        address payToken,
         uint256 newPrice
     );
     event ItemCanceled(
@@ -67,7 +61,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     /// @notice Structure for listed items
     struct Listing {
         uint256 quantity;
-        address payToken;
         uint256 pricePerItem;
         uint256 startingTime;
     }
@@ -94,8 +87,8 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     /// @notice Platform fee
     uint16 public platformFee;
 
-    /// @notice Platform fee receipient
-    address payable public feeReceipient;
+    /// @notice Platform fee recipient
+    address payable public feeRecipient;
 
     /// @notice NftAddress -> Royalty
     mapping(address => CollectionRoyalty) public collectionRoyalties;
@@ -161,7 +154,7 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         initializer
     {
         platformFee = _platformFee;
-        feeReceipient = _feeRecipient;
+        feeRecipient = _feeRecipient;
 
         __Ownable_init();
         __ReentrancyGuard_init();
@@ -171,14 +164,12 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     /// @param _nftAddress Address of NFT contract
     /// @param _tokenId Token ID of NFT
     /// @param _quantity token amount to list (needed for ERC-1155 NFTs, set as 1 for ERC-721)
-    /// @param _payToken Paying token
     /// @param _pricePerItem sale price for each iteam
     /// @param _startingTime scheduling for a future sale
     function listItem(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _quantity,
-        address _payToken,
         uint256 _pricePerItem,
         uint256 _startingTime
     ) external notListed(_nftAddress, _tokenId, _msgSender()) {
@@ -205,14 +196,9 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
             revert("invalid nft address");
         }
 
-        require(
-            _payToken == address(0),
-            "invalid pay token"
-        );
 
         listings[_nftAddress][_tokenId][_msgSender()] = Listing(
             _quantity,
-            _payToken,
             _pricePerItem,
             _startingTime
         );
@@ -221,7 +207,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
             _nftAddress,
             _tokenId,
             _quantity,
-            _payToken,
             _pricePerItem,
             _startingTime
         );
@@ -239,12 +224,10 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     /// @notice Method for updating listed NFT
     /// @param _nftAddress Address of NFT contract
     /// @param _tokenId Token ID of NFT
-    /// @param _payToken payment token
     /// @param _newPrice New sale price for each iteam
     function updateListing(
         address _nftAddress,
         uint256 _tokenId,
-        address _payToken,
         uint256 _newPrice
     ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
         Listing storage listedItem = listings[_nftAddress][_tokenId][
@@ -265,18 +248,11 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
             revert("invalid nft address");
         }
 
-        require(
-            _payToken == address(0),
-            "invalid pay token"
-        );
-
-        listedItem.payToken = _payToken;
         listedItem.pricePerItem = _newPrice;
         emit ItemUpdated(
             _msgSender(),
             _nftAddress,
             _tokenId,
-            _payToken,
             _newPrice
         );
     }
@@ -296,74 +272,40 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         validListing(_nftAddress, _tokenId, _owner)
     {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-        require(listedItem.payToken == address(0), "invalid pay token");
         require(
             msg.value >= listedItem.pricePerItem.mul(listedItem.quantity),
             "insufficient balance to buy"
         );
 
-        _buyItem(_nftAddress, _tokenId, address(0), _owner);
+        _buyItem(_nftAddress, _tokenId, _owner);
     }
 
-    /// @notice Method for buying listed NFT
-    /// @param _nftAddress NFT contract address
-    /// @param _tokenId TokenId
-    function buyItem(
-        address _nftAddress,
-        uint256 _tokenId,
-        address _payToken,
-        address _owner
-    )
-        external
-        nonReentrant
-        isListed(_nftAddress, _tokenId, _owner)
-        validListing(_nftAddress, _tokenId, _owner)
-    {
-        Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-        require(listedItem.payToken == _payToken, "invalid pay token");
-
-        _buyItem(_nftAddress, _tokenId, _payToken, _owner);
-    }
 
     function _buyItem(
         address _nftAddress,
         uint256 _tokenId,
-        address _payToken,
         address _owner
     ) private {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
 
         uint256 price = listedItem.pricePerItem.mul(listedItem.quantity);
         uint256 feeAmount = price.mul(platformFee).div(1e3);
-        if (_payToken == address(0)) {
-            (bool feeTransferSuccess, ) = feeReceipient.call{value: feeAmount}(
-                ""
-            ); // TODO investigate
-            require(feeTransferSuccess, "fee transfer failed");
-        } else {
-            IERC20(_payToken).safeTransferFrom(
-                _msgSender(),
-                feeReceipient,
-                feeAmount
-            );
-        }
+
+        (bool feeTransferSuccess, ) = feeRecipient.call{value: feeAmount}(
+            ""
+        );
+        require(feeTransferSuccess, "fee transfer failed");
 
         address minter = minters[_nftAddress][_tokenId];
         uint16 royalty = royalties[_nftAddress][_tokenId];
         if (minter != address(0) && royalty != 0) {
             uint256 royaltyFee = price.sub(feeAmount).mul(royalty).div(10000);
-            if (_payToken == address(0)) {
-                (bool royaltyTransferSuccess, ) = payable(minter).call{
-                    value: royaltyFee
-                }("");
-                require(royaltyTransferSuccess, "royalty fee transfer failed");
-            } else {
-                IERC20(_payToken).safeTransferFrom(
-                    _msgSender(),
-                    minter,
-                    royaltyFee
-                );
-            }
+
+            (bool royaltyTransferSuccess, ) = payable(minter).call{
+                value: royaltyFee
+            }("");
+            require(royaltyTransferSuccess, "royalty fee transfer failed");
+
             feeAmount = feeAmount.add(royaltyFee);
         } else {
             minter = collectionRoyalties[_nftAddress].feeRecipient;
@@ -372,36 +314,24 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
                 uint256 royaltyFee = price.sub(feeAmount).mul(royalty).div(
                     10000
                 );
-                if (_payToken == address(0)) {
-                    (bool royaltyTransferSuccess, ) = payable(minter).call{
-                        value: royaltyFee
-                    }("");
-                    require(
-                        royaltyTransferSuccess,
-                        "royalty fee transfer failed"
-                    );
-                } else {
-                    IERC20(_payToken).safeTransferFrom(
-                        _msgSender(),
-                        minter,
-                        royaltyFee
-                    );
-                }
+
+                (bool royaltyTransferSuccess, ) = payable(minter).call{
+                    value: royaltyFee
+                }("");
+                require(
+                    royaltyTransferSuccess,
+                    "royalty fee transfer failed"
+                );
+
                 feeAmount = feeAmount.add(royaltyFee);
             }
         }
-        if (_payToken == address(0)) {
-            (bool ownerTransferSuccess, ) = _owner.call{
-                value: price.sub(feeAmount)
-            }("");
-            require(ownerTransferSuccess, "owner transfer failed");
-        } else {
-            IERC20(_payToken).safeTransferFrom(
-                _msgSender(),
-                _owner,
-                price.sub(feeAmount)
-            );
-        }
+
+        (bool ownerTransferSuccess, ) = _owner.call{
+            value: price.sub(feeAmount)
+        }("");
+        require(ownerTransferSuccess, "owner transfer failed");
+
 
         // Transfer NFT to buyer
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
@@ -428,8 +358,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
             _nftAddress,
             _tokenId,
             listedItem.quantity,
-            _payToken,
-            getPrice(_payToken),
             price.div(listedItem.quantity)
         );
         delete (listings[_nftAddress][_tokenId][_owner]);
@@ -510,36 +438,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     }
 
     /**
-     @notice Method for getting price for pay token
-     @param _payToken Paying token
-     */
-    function getPrice(address _payToken) public view returns (int256) {
-        int256 unitPrice;
-        uint8 decimals;
-        require(
-            _payToken == address(0),
-            "invalid pay token"
-        );
-        if (_payToken == address(0)) {
-            // ISoundchainPriceFeed priceFeed = ISoundchainPriceFeed(
-            //     addressRegistry.priceFeed()
-            // );
-            // (unitPrice, decimals) = priceFeed.getPrice(priceFeed.wFTM());
-        } else {
-            // (unitPrice, decimals) = ISoundchainPriceFeed(
-            //     addressRegistry.priceFeed()
-            // ).getPrice(_payToken);
-        }
-        if (decimals < 18) {
-            unitPrice = unitPrice * (int256(10)**(18 - decimals));
-        } else {
-            unitPrice = unitPrice / (int256(10)**(decimals - 18));
-        }
-
-        return unitPrice;
-    }
-
-    /**
      @notice Method for updating platform fee
      @dev Only admin
      @param _platformFee uint16 the platform fee to set
@@ -558,7 +456,7 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         external
         onlyOwner
     {
-        feeReceipient = _platformFeeRecipient;
+        feeRecipient = _platformFeeRecipient;
         emit UpdatePlatformFeeRecipient(_platformFeeRecipient);
     }
 
