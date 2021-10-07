@@ -19,12 +19,13 @@ describe("Marketplace and Soundchain Token", () => {
   let owner: SignerWithAddress,
     minter: SignerWithAddress,
     buyer: SignerWithAddress,
+    buyer2: SignerWithAddress,
     nft: SoundchainCollectible,
     feeAddress: SignerWithAddress,
     marketplace: Contract;
 
   beforeEach(async () => {
-    [owner, minter, buyer, feeAddress] = await ethers.getSigners();
+    [owner, minter, buyer, feeAddress, buyer2] = await ethers.getSigners();
 
     const SoundchainCollectible: SoundchainCollectible__factory =
       await ethers.getContractFactory("SoundchainCollectible");
@@ -40,6 +41,7 @@ describe("Marketplace and Soundchain Token", () => {
 
     await nft.safeMint(minter.address, tokenUri);
     await nft.safeMint(owner.address, tokenUri);
+    await nft.safeMint(minter.address, tokenUri);
   });
 
   describe("Listing Item", () => {
@@ -59,28 +61,18 @@ describe("Marketplace and Soundchain Token", () => {
 
     it("successfully lists item", async () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
-      await marketplace.connect(minter).listItem(
-        nft.address,
-        firstTokenId,
-        "1",
-
-        pricePerItem,
-        "0"
-      );
+      await marketplace
+        .connect(minter)
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
   });
 
   describe("Canceling Item", () => {
     beforeEach(async () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
-      await marketplace.connect(minter).listItem(
-        nft.address,
-        firstTokenId,
-        "1",
-
-        pricePerItem,
-        "0"
-      );
+      await marketplace
+        .connect(minter)
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
 
     it("reverts when item is not listed", async () => {
@@ -105,14 +97,9 @@ describe("Marketplace and Soundchain Token", () => {
   describe("Updating Item Price", () => {
     beforeEach(async () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
-      await marketplace.connect(minter).listItem(
-        nft.address,
-        firstTokenId,
-        "1",
-
-        pricePerItem,
-        "0"
-      );
+      await marketplace
+        .connect(minter)
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
 
     it("reverts when item is not listed", async () => {
@@ -137,14 +124,9 @@ describe("Marketplace and Soundchain Token", () => {
   describe("Buying Item", () => {
     beforeEach(async () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
-      await marketplace.connect(minter).listItem(
-        nft.address,
-        firstTokenId,
-        "1",
-
-        pricePerItem,
-        "0"
-      );
+      await marketplace
+        .connect(minter)
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
 
     it("reverts when seller doesn't own the item", async () => {
@@ -164,7 +146,6 @@ describe("Marketplace and Soundchain Token", () => {
         nft.address,
         secondTokenId,
         "1",
-
         pricePerItem,
         2 ** 50
       );
@@ -198,6 +179,59 @@ describe("Marketplace and Soundchain Token", () => {
       );
 
       expect(await nft.ownerOf(firstTokenId)).to.be.equal(buyer.address);
+    });
+  });
+
+  describe("Royalties", () => {
+    it("reverts when royalty is greater than 100%", async () => {
+      expect(
+        marketplace.connect(minter).registerRoyalty(nft.address, "2", "20000")
+      ).to.be.revertedWith("invalid royalty");
+    });
+
+    it("reverts when is not owner", async () => {
+      expect(
+        marketplace.connect(buyer).registerRoyalty(nft.address, "2", "100")
+      ).to.be.revertedWith("not owning item");
+    });
+
+    it("successfully set royalties on map", async () => {
+      await marketplace
+        .connect(minter)
+        .registerRoyalty(nft.address, "2", "100");
+
+      expect(await marketplace.royalties(nft.address, "2")).to.be.eq(100);
+    });
+
+    it("successfully transfer royalties", async () => {
+      await nft.connect(minter).setApprovalForAll(marketplace.address, true);
+      await nft.connect(buyer).setApprovalForAll(marketplace.address, true);
+
+      await marketplace
+        .connect(minter)
+        .listItem(nft.address, "2", "1", pricePerItem, "0");
+
+      await marketplace
+        .connect(minter)
+        .registerRoyalty(nft.address, "2", "1000");
+
+      await marketplace
+        .connect(buyer)
+        .buyItem(nft.address, "2", minter.address, {
+          value: pricePerItem,
+        });
+
+      await marketplace
+        .connect(buyer)
+        .listItem(nft.address, "2", "1", pricePerItem, "0");
+      await expect(() =>
+        marketplace.connect(buyer2).buyItem(nft.address, "2", buyer.address, {
+          value: pricePerItem,
+        })
+      ).to.changeEtherBalances(
+        [feeAddress, buyer, minter],
+        [25000000000000000n, 877500000000000000n, 97500000000000000n]
+      );
     });
   });
 });
