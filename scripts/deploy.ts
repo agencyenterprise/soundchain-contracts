@@ -1,19 +1,23 @@
-import { ethers, upgrades } from "hardhat";
+import { ethers, upgrades, run } from "hardhat";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const { FEE_RECIPIENT_ADDRESS, PLATFORM_FEE } = process.env;
 
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
 const main = async () => {
-  console.log("Deploying SoundchainCollectible");
+  console.log("💡 Deploying SoundchainCollectible");
   const SoundchainCollectible = await ethers.getContractFactory(
     "SoundchainCollectible"
   );
   const soundchainCollectible = await SoundchainCollectible.deploy();
-  console.log("Contract deployed to address: ", soundchainCollectible.address);
+  console.log(
+    `✅ SoundchainCollectible deployed to address: ${soundchainCollectible.address}`
+  );
 
-  console.log("Deploying Marketplace");
+  console.log("💡 Deploying Marketplace");
   const MarketplaceFactory = await ethers.getContractFactory(
     "SoundchainMarketplace"
   );
@@ -21,7 +25,17 @@ const main = async () => {
     FEE_RECIPIENT_ADDRESS,
     PLATFORM_FEE,
   ]);
-  console.log("Marketplace deployed to address: ", marketplace.address);
+  console.log(`✅ Marketplace deployed to address: ${marketplace.address}`);
+
+  console.log("⏰ Waiting confirmations");
+  await delay(240000);
+
+  console.log("🪄  Verifying contracts");
+
+  await run("verify:verify", {
+    address: soundchainCollectible.address,
+  });
+  console.log("✅ SoundchainCollectible verified on Etherscan");
 };
 
 main()
