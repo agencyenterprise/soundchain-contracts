@@ -350,7 +350,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         uint16 _royalty
     ) external {
         require(_royalty <= 10000, "invalid royalty");
-        require(_isSoundchainNFT(_nftAddress), "invalid nft address");
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
             IERC721 nft = IERC721(_nftAddress);
             require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
@@ -387,7 +386,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
             _royalty == 0 || _feeRecipient != address(0),
             "invalid fee recipient address"
         );
-        require(!_isSoundchainNFT(_nftAddress), "invalid nft address");
         require(
             collectionRoyalties[_nftAddress].creator == address(0),
             "royalty already set"
@@ -397,21 +395,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
             _creator,
             _feeRecipient
         );
-    }
-
-    function _isSoundchainNFT(address _nftAddress) internal view returns (bool) {
-        return true;
-            // addressRegistry.artion() == _nftAddress ||
-            // ISoundchainNFTFactory(addressRegistry.factory()).exists(_nftAddress) ||
-            // ISoundchainNFTFactory(addressRegistry.privateFactory()).exists(
-            //     _nftAddress
-            // ) ||
-            // ISoundchainNFTFactory(addressRegistry.artFactory()).exists(
-            //     _nftAddress
-            // ) ||
-            // ISoundchainNFTFactory(addressRegistry.privateArtFactory()).exists(
-            //     _nftAddress
-            // );
     }
 
     /**

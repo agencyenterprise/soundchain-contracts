@@ -39,16 +39,16 @@ describe("Marketplace and Soundchain Token", () => {
       platformFee,
     ]);
 
-    await nft.safeMint(minter.address, tokenUri);
-    await nft.safeMint(owner.address, tokenUri);
-    await nft.safeMint(minter.address, tokenUri);
+    await nft.mint(minter.address, 1, tokenUri);
+    await nft.mint(owner.address, 1, tokenUri);
+    await nft.mint(minter.address, 1, tokenUri);
   });
 
   describe("Listing Item", () => {
     it("reverts when not owning NFT", async () => {
       expect(
         marketplace.listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
-      ).to.be.revertedWith("not owning item");
+      ).to.be.revertedWith("must hold enough nfts");
     });
 
     it("reverts when not approved", async () => {
@@ -132,7 +132,13 @@ describe("Marketplace and Soundchain Token", () => {
     it("reverts when seller doesn't own the item", async () => {
       await nft
         .connect(minter)
-        .transferFrom(minter.address, owner.address, firstTokenId);
+        .safeTransferFrom(
+          minter.address,
+          owner.address,
+          firstTokenId,
+          1,
+          "0x6d6168616d000000000000000000000000000000000000000000000000000000"
+        );
       await expect(
         marketplace.buyItem(nft.address, firstTokenId, minter.address, {
           value: pricePerItem,
@@ -178,7 +184,7 @@ describe("Marketplace and Soundchain Token", () => {
         [25000000000000000n, 975000000000000000n]
       );
 
-      expect(await nft.ownerOf(firstTokenId)).to.be.equal(buyer.address);
+      expect(await nft.balanceOf(buyer.address, firstTokenId)).to.be.equal(1);
     });
   });
 
