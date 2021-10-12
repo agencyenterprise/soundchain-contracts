@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
-import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -60,7 +59,6 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         address feeRecipient;
     }
 
-    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
     bytes4 private constant INTERFACE_ID_ERC1155 = 0xd9b67a26;
 
     /// @notice NftAddress -> Token ID -> Minter
@@ -109,12 +107,7 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         address _owner
     ) {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
-            IERC721 nft = IERC721(_nftAddress);
-            require(nft.ownerOf(_tokenId) == _owner, "not owning item");
-        } else if (
-            IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)
-        ) {
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
             IERC1155 nft = IERC1155(_nftAddress);
             require(
                 nft.balanceOf(_owner, _tokenId) >= listedItem.quantity,
@@ -142,7 +135,7 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
     /// @notice Method for listing NFT
     /// @param _nftAddress Address of NFT contract
     /// @param _tokenId Token ID of NFT
-    /// @param _quantity token amount to list (needed for ERC-1155 NFTs, set as 1 for ERC-721)
+    /// @param _quantity token amount to list
     /// @param _pricePerItem sale price for each iteam
     /// @param _startingTime scheduling for a future sale
     function listItem(
@@ -152,16 +145,7 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         uint256 _pricePerItem,
         uint256 _startingTime
     ) external notListed(_nftAddress, _tokenId, _msgSender()) {
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
-            IERC721 nft = IERC721(_nftAddress);
-            require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
-            require(
-                nft.isApprovedForAll(_msgSender(), address(this)),
-                "item not approved"
-            );
-        } else if (
-            IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)
-        ) {
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
             IERC1155 nft = IERC1155(_nftAddress);
             require(
                 nft.balanceOf(_msgSender(), _tokenId) >= _quantity,
@@ -212,12 +196,7 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         Listing storage listedItem = listings[_nftAddress][_tokenId][
             _msgSender()
         ];
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
-            IERC721 nft = IERC721(_nftAddress);
-            require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
-        } else if (
-            IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)
-        ) {
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
             IERC1155 nft = IERC1155(_nftAddress);
             require(
                 nft.balanceOf(_msgSender(), _tokenId) >= listedItem.quantity,
@@ -311,23 +290,13 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         }("");
         require(ownerTransferSuccess, "owner transfer failed");
 
-
-        // Transfer NFT to buyer
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
-            IERC721(_nftAddress).safeTransferFrom(
-                _owner,
-                _msgSender(),
-                _tokenId
-            );
-        } else {
-            IERC1155(_nftAddress).safeTransferFrom(
-                _owner,
-                _msgSender(),
-                _tokenId,
-                listedItem.quantity,
-                bytes("")
-            );
-        }
+        IERC1155(_nftAddress).safeTransferFrom(
+            _owner,
+            _msgSender(),
+            _tokenId,
+            listedItem.quantity,
+            bytes("")
+        );
 
         emit ItemSold(
             _owner,
@@ -350,12 +319,8 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         uint16 _royalty
     ) external {
         require(_royalty <= 10000, "invalid royalty");
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
-            IERC721 nft = IERC721(_nftAddress);
-            require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
-        } else if (
-            IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)
-        ) {
+
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
             IERC1155 nft = IERC1155(_nftAddress);
             require(
                 nft.balanceOf(_msgSender(), _tokenId) > 0,
@@ -434,12 +399,8 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         address _owner
     ) private {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
-            IERC721 nft = IERC721(_nftAddress);
-            require(nft.ownerOf(_tokenId) == _owner, "not owning item");
-        } else if (
-            IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)
-        ) {
+
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
             IERC1155 nft = IERC1155(_nftAddress);
             require(
                 nft.balanceOf(_msgSender(), _tokenId) >= listedItem.quantity,
