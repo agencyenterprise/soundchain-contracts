@@ -20,7 +20,6 @@ contract SoundchainCollectible is ERC1155Metadata, ERC1155, Ownable, ERC1155Burn
 
     function mint(address account, uint256 amount, string memory _tokenURI)
         public
-        onlyOwner
     {
         uint tokenId = _tokenIdCounter.current();
 
