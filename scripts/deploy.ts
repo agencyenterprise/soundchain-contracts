@@ -1,5 +1,5 @@
-import { ethers, upgrades, run } from "hardhat";
 import dotenv from "dotenv";
+import { ethers, run, upgrades } from "hardhat";
 
 dotenv.config();
 

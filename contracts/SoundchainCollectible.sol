@@ -10,7 +10,7 @@ import "./ERC1155Metadata.sol";
 contract SoundchainCollectible is ERC1155Metadata, ERC1155, Ownable, ERC1155Burnable {
     using Counters for Counters.Counter;
 
-    Counters.Counter private _tokenIdCounter;
+    Counters.Counter public _tokenIdCounter;
 
     constructor() ERC1155("") {}
 
