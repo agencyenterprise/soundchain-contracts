@@ -6,14 +6,14 @@ import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
-import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/utils/AddressUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/security/ReentrancyGuardUpgradeable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/utils/Address.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 
-contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable {
+contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
-    using AddressUpgradeable for address payable;
+    using Address for address payable;
 
     /// @notice Events for the contract
     event ItemListed(
@@ -120,16 +120,11 @@ contract SoundchainMarketplace is OwnableUpgradeable, ReentrancyGuardUpgradeable
         _;
     }
 
-    /// @notice Contract initializer
-    function initialize(address payable _feeRecipient, uint16 _platformFee)
-        public
-        initializer
-    {
+
+    /// @notice Contract constructor
+    constructor(address payable _feeRecipient, uint16 _platformFee) {
         platformFee = _platformFee;
         feeRecipient = _feeRecipient;
-
-        __Ownable_init();
-        __ReentrancyGuard_init();
     }
 
     /// @notice Method for listing NFT

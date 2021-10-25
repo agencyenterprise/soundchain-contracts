@@ -1,7 +1,7 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { Contract } from "ethers";
-import { ethers, upgrades } from "hardhat";
+import { ethers } from "hardhat";
 import {
   SoundchainCollectible,
   SoundchainCollectible__factory,
@@ -34,10 +34,10 @@ describe("Marketplace and Soundchain Token", () => {
     const MarketplaceFactory: SoundchainMarketplace__factory =
       await ethers.getContractFactory("SoundchainMarketplace");
 
-    marketplace = await upgrades.deployProxy(MarketplaceFactory, [
+    marketplace = await MarketplaceFactory.deploy(
       feeAddress.address,
-      platformFee,
-    ]);
+      platformFee
+    );
 
     await nft.mint(minter.address, 1, tokenUri);
     await nft.mint(owner.address, 1, tokenUri);
