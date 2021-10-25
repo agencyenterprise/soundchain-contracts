@@ -25,7 +25,6 @@ const getSignedTransaction = async (data) => {
   const from = await getAdminWallet();
   const nonce = await web3.eth.getTransactionCount(from);
   const transaction = {
-    type: 0, // for building a legacy transaction
     from,
     data,
     nonce,
