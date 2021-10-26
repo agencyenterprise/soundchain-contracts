@@ -77,9 +77,6 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     /// @notice Platform fee recipient
     address payable public feeRecipient;
 
-    /// @notice NftAddress -> Royalty
-    mapping(address => CollectionRoyalty) public collectionRoyalties;
-
 
     modifier isListed(
         address _nftAddress,
@@ -127,48 +124,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         feeRecipient = _feeRecipient;
     }
 
-    /// @notice Method for listing NFT
-    /// @param _nftAddress Address of NFT contract
-    /// @param _tokenId Token ID of NFT
-    /// @param _quantity token amount to list
-    /// @param _pricePerItem sale price for each iteam
-    /// @param _startingTime scheduling for a future sale
-    function listItem(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _quantity,
-        uint256 _pricePerItem,
-        uint256 _startingTime
-    ) external notListed(_nftAddress, _tokenId, _msgSender()) {
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
-            IERC1155 nft = IERC1155(_nftAddress);
-            require(
-                nft.balanceOf(_msgSender(), _tokenId) >= _quantity,
-                "must hold enough nfts"
-            );
-            require(
-                nft.isApprovedForAll(_msgSender(), address(this)),
-                "item not approved"
-            );
-        } else {
-            revert("invalid nft address");
-        }
 
-
-        listings[_nftAddress][_tokenId][_msgSender()] = Listing(
-            _quantity,
-            _pricePerItem,
-            _startingTime
-        );
-        emit ItemListed(
-            _msgSender(),
-            _nftAddress,
-            _tokenId,
-            _quantity,
-            _pricePerItem,
-            _startingTime
-        );
-    }
 
     /// @notice Method for canceling listed NFT
     function cancelListing(address _nftAddress, uint256 _tokenId)
@@ -187,7 +143,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address _nftAddress,
         uint256 _tokenId,
         uint256 _newPrice
-    ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
+    ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) { // TODO Add royalty
         Listing storage listedItem = listings[_nftAddress][_tokenId][
             _msgSender()
         ];
@@ -260,24 +216,6 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             require(royaltyTransferSuccess, "royalty fee transfer failed");
 
             feeAmount = feeAmount.add(royaltyFee);
-        } else {
-            minter = collectionRoyalties[_nftAddress].feeRecipient;
-            royalty = collectionRoyalties[_nftAddress].royalty;
-            if (minter != address(0) && royalty != 0) {
-                uint256 royaltyFee = price.sub(feeAmount).mul(royalty).div(
-                    10000
-                );
-
-                (bool royaltyTransferSuccess, ) = payable(minter).call{
-                    value: royaltyFee
-                }("");
-                require(
-                    royaltyTransferSuccess,
-                    "royalty fee transfer failed"
-                );
-
-                feeAmount = feeAmount.add(royaltyFee);
-            }
         }
 
         (bool ownerTransferSuccess, ) = _owner.call{
@@ -304,57 +242,57 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         delete (listings[_nftAddress][_tokenId][_owner]);
     }
 
-    /// @notice Method for setting royalty
-    /// @param _nftAddress NFT contract address
-    /// @param _tokenId TokenId
-    /// @param _royalty Royalty
-    function registerRoyalty(
+    /// @notice Method for listing NFT
+    /// @param _nftAddress Address of NFT contract
+    /// @param _tokenId Token ID of NFT
+    /// @param _quantity token amount to list
+    /// @param _pricePerItem sale price for each iteam
+    /// @param _startingTime scheduling for a future sale
+    /// @param _royalty scheduling for a future sale
+    function listItem(
         address _nftAddress,
         uint256 _tokenId,
+        uint256 _quantity,
+        uint256 _pricePerItem,
+        uint256 _startingTime,
         uint16 _royalty
-    ) external {
-        require(_royalty <= 10000, "invalid royalty");
-
+    ) external notListed(_nftAddress, _tokenId, _msgSender()) {
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
             IERC1155 nft = IERC1155(_nftAddress);
             require(
-                nft.balanceOf(_msgSender(), _tokenId) > 0,
-                "not owning item"
+                nft.balanceOf(_msgSender(), _tokenId) >= _quantity,
+                "must hold enough nfts"
             );
+            require(
+                nft.isApprovedForAll(_msgSender(), address(this)),
+                "item not approved"
+            );
+        } else {
+            revert("invalid nft address");
         }
 
-        require(
-            minters[_nftAddress][_tokenId] == address(0),
-            "royalty already set"
-        );
-        minters[_nftAddress][_tokenId] = _msgSender();
-        royalties[_nftAddress][_tokenId] = _royalty;
-    }
 
-    /// @notice Method for setting royalty
-    /// @param _nftAddress NFT contract address
-    /// @param _royalty Royalty
-    function registerCollectionRoyalty(
-        address _nftAddress,
-        address _creator,
-        uint16 _royalty,
-        address _feeRecipient
-    ) external onlyOwner {
-        require(_creator != address(0), "invalid creator address");
-        require(_royalty <= 10000, "invalid royalty");
-        require(
-            _royalty == 0 || _feeRecipient != address(0),
-            "invalid fee recipient address"
+        listings[_nftAddress][_tokenId][_msgSender()] = Listing(
+            _quantity,
+            _pricePerItem,
+            _startingTime
         );
-        require(
-            collectionRoyalties[_nftAddress].creator == address(0),
-            "royalty already set"
+        emit ItemListed(
+            _msgSender(),
+            _nftAddress,
+            _tokenId,
+            _quantity,
+            _pricePerItem,
+            _startingTime
         );
-        collectionRoyalties[_nftAddress] = CollectionRoyalty(
-            _royalty,
-            _creator,
-            _feeRecipient
-        );
+
+        address minter = minters[_nftAddress][_tokenId];
+        uint16 royalty = royalties[_nftAddress][_tokenId];
+        if (minter == address(0) && royalty == 0) {
+            require(_royalty <= 10000, "invalid royalty");
+            minters[_nftAddress][_tokenId] = _msgSender();
+            royalties[_nftAddress][_tokenId] = _royalty;
+        }
     }
 
     /**

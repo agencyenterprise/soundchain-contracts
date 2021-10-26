@@ -47,7 +47,14 @@ describe("Marketplace and Soundchain Token", () => {
   describe("Listing Item", () => {
     it("reverts when not owning NFT", async () => {
       expect(
-        marketplace.listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
+        marketplace.listItem(
+          nft.address,
+          firstTokenId,
+          "1",
+          pricePerItem,
+          "0",
+          0
+        )
       ).to.be.revertedWith("must hold enough nfts");
     });
 
@@ -55,7 +62,7 @@ describe("Marketplace and Soundchain Token", () => {
       expect(
         marketplace
           .connect(minter)
-          .listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
+          .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0)
       ).to.be.revertedWith("item not approved");
     });
 
@@ -63,7 +70,7 @@ describe("Marketplace and Soundchain Token", () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(minter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
     });
   });
 
@@ -72,7 +79,7 @@ describe("Marketplace and Soundchain Token", () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(minter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
     });
 
     it("reverts when item is not listed", async () => {
@@ -99,7 +106,7 @@ describe("Marketplace and Soundchain Token", () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(minter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
     });
 
     it("reverts when item is not listed", async () => {
@@ -126,7 +133,7 @@ describe("Marketplace and Soundchain Token", () => {
       await nft.connect(minter).setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(minter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
     });
 
     it("reverts when seller doesn't own the item", async () => {
@@ -153,7 +160,8 @@ describe("Marketplace and Soundchain Token", () => {
         secondTokenId,
         "1",
         pricePerItem,
-        2 ** 50
+        2 ** 50,
+        0
       );
       await expect(
         marketplace
@@ -189,22 +197,22 @@ describe("Marketplace and Soundchain Token", () => {
   });
 
   describe("Royalties", () => {
-    it("reverts when royalty is greater than 100%", async () => {
-      expect(
-        marketplace.connect(minter).registerRoyalty(nft.address, "2", "20000")
-      ).to.be.revertedWith("invalid royalty");
+    beforeEach(async () => {
+      nft.connect(minter).setApprovalForAll(marketplace.address, true);
     });
 
-    it("reverts when is not owner", async () => {
+    it("reverts when royalty is greater than 100%", async () => {
       expect(
-        marketplace.connect(buyer).registerRoyalty(nft.address, "2", "100")
-      ).to.be.revertedWith("not owning item");
+        marketplace
+          .connect(minter)
+          .listItem(nft.address, "2", "1", pricePerItem, "0", "20000")
+      ).to.be.revertedWith("invalid royalty");
     });
 
     it("successfully set royalties on map", async () => {
       await marketplace
         .connect(minter)
-        .registerRoyalty(nft.address, "2", "100");
+        .listItem(nft.address, "2", "1", pricePerItem, "0", "100");
 
       expect(await marketplace.royalties(nft.address, "2")).to.be.eq(100);
     });
@@ -215,11 +223,7 @@ describe("Marketplace and Soundchain Token", () => {
 
       await marketplace
         .connect(minter)
-        .listItem(nft.address, "2", "1", pricePerItem, "0");
-
-      await marketplace
-        .connect(minter)
-        .registerRoyalty(nft.address, "2", "1000");
+        .listItem(nft.address, "2", "1", pricePerItem, "0", 1000);
 
       await marketplace
         .connect(buyer)
@@ -229,7 +233,7 @@ describe("Marketplace and Soundchain Token", () => {
 
       await marketplace
         .connect(buyer)
-        .listItem(nft.address, "2", "1", pricePerItem, "0");
+        .listItem(nft.address, "2", "1", pricePerItem, "0", 0);
       await expect(() =>
         marketplace.connect(buyer2).buyItem(nft.address, "2", buyer.address, {
           value: pricePerItem,
