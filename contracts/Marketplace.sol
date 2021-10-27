@@ -53,12 +53,6 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 startingTime;
     }
 
-    struct CollectionRoyalty {
-        uint16 royalty;
-        address creator;
-        address feeRecipient;
-    }
-
     bytes4 private constant INTERFACE_ID_ERC1155 = 0xd9b67a26;
 
     /// @notice NftAddress -> Token ID -> Minter
