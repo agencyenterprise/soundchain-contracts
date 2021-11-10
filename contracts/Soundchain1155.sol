@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC1155/extensions/ERC1155Burnable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "./ERC1155Metadata.sol";
 
-contract SoundchainCollectible is ERC1155Metadata, ERC1155, Ownable, ERC1155Burnable {
+contract Soundchain1155 is ERC1155Metadata, ERC1155, Ownable, ERC1155Burnable {
     using Counters for Counters.Counter;
 
     Counters.Counter public _tokenIdCounter;

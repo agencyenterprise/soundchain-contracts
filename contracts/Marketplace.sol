@@ -3,7 +3,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import "@openzeppelin/contracts/token/ERC1155/IERC1155.sol";
+import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -53,7 +53,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 startingTime;
     }
 
-    bytes4 private constant INTERFACE_ID_ERC1155 = 0xd9b67a26;
+    bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
 
     /// @notice NftAddress -> Token ID -> Minter
     mapping(address => mapping(uint256 => address)) public minters;
@@ -98,12 +98,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address _owner
     ) {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
-            IERC1155 nft = IERC1155(_nftAddress);
-            require(
-                nft.balanceOf(_owner, _tokenId) >= listedItem.quantity,
-                "not owning item"
-            );
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+            IERC721 nft = IERC721(_nftAddress);
+            require(nft.ownerOf(_tokenId) == _owner, "not owning item");
         } else {
             revert("invalid nft address");
         }
@@ -141,12 +138,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         Listing storage listedItem = listings[_nftAddress][_tokenId][
             _msgSender()
         ];
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
-            IERC1155 nft = IERC1155(_nftAddress);
-            require(
-                nft.balanceOf(_msgSender(), _tokenId) >= listedItem.quantity,
-                "not owning item"
-            );
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+            IERC721 nft = IERC721(_nftAddress);
+            require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
         } else {
             revert("invalid nft address");
         }
@@ -217,12 +211,10 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         }("");
         require(ownerTransferSuccess, "owner transfer failed");
 
-        IERC1155(_nftAddress).safeTransferFrom(
+        IERC721(_nftAddress).safeTransferFrom(
             _owner,
             _msgSender(),
-            _tokenId,
-            listedItem.quantity,
-            bytes("")
+            _tokenId
         );
 
         emit ItemSold(
@@ -251,12 +243,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 _startingTime,
         uint16 _royalty
     ) external notListed(_nftAddress, _tokenId, _msgSender()) {
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
-            IERC1155 nft = IERC1155(_nftAddress);
-            require(
-                nft.balanceOf(_msgSender(), _tokenId) >= _quantity,
-                "must hold enough nfts"
-            );
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+            IERC721 nft = IERC721(_nftAddress);
+            require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
             require(
                 nft.isApprovedForAll(_msgSender(), address(this)),
                 "item not approved"
@@ -325,14 +314,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         address _owner
     ) private {
-        Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-
-        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC1155)) {
-            IERC1155 nft = IERC1155(_nftAddress);
-            require(
-                nft.balanceOf(_msgSender(), _tokenId) >= listedItem.quantity,
-                "not owning item"
-            );
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+            IERC721 nft = IERC721(_nftAddress);
+            require(nft.ownerOf(_tokenId) == _owner, "not owning item");
         } else {
             revert("invalid nft address");
         }
