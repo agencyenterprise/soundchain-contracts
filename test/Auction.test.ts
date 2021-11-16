@@ -43,6 +43,26 @@ describe("Auction and Soundchain Token", () => {
 
   describe("Listing Item", () => {
     describe("validation", async () => {
+      it("fails if endTime is in the past", async () => {
+        await auction.setNowOverride("12");
+        await expect(
+          auction
+            .connect(minter)
+            .createAuction(nft.address, firstTokenId, "1", "13", true, "10")
+        ).to.be.revertedWith(
+          "end time must be greater than start (by 5 minutes)"
+        );
+      });
+
+      it("fails if startTime less than now", async () => {
+        await auction.setNowOverride("2");
+        await expect(
+          auction
+            .connect(minter)
+            .createAuction(nft.address, firstTokenId, "1", "1", true, "4000")
+        ).to.be.revertedWith("invalid start time");
+      });
+
       it("fails if nft already has auction in play", async () => {
         await auction
           .connect(minter)
@@ -67,6 +87,26 @@ describe("Auction and Soundchain Token", () => {
               "100000000000000"
             )
         ).to.be.revertedWith("auction already started");
+      });
+
+      it("fails if token does not exist", async () => {
+        await auction.setNowOverride("10");
+
+        await expect(
+          auction
+            .connect(minter)
+            .createAuction(nft.address, "99", "1", "1", true, "400")
+        ).to.be.revertedWith("ERC721: owner query for nonexistent token");
+      });
+
+      it("fails if contract is paused", async () => {
+        await auction.setNowOverride("2");
+        await auction.connect(owner).toggleIsPaused();
+        await expect(
+          auction
+            .connect(minter)
+            .createAuction(nft.address, firstTokenId, "1", "0", true, "400")
+        ).to.be.revertedWith("contract paused");
       });
 
       it("fails if you don't own the nft", async () => {
