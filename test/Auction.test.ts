@@ -70,8 +70,6 @@ describe("Auction and Soundchain Token", () => {
       });
 
       it("fails if you don't own the nft", async () => {
-        await nft.connect(minter).safeMint(buyer.address, tokenUri);
-
         await auction
           .connect(minter)
           .createAuction(
@@ -93,7 +91,6 @@ describe("Auction and Soundchain Token", () => {
 
     describe("successful creation", async () => {
       it("Token retains in the ownership of the auction creator", async () => {
-        await nft.connect(minter).safeMint(minter.address, tokenUri);
         await auction
           .connect(minter)
           .createAuction(
@@ -114,7 +111,6 @@ describe("Auction and Soundchain Token", () => {
   describe("placeBid()", async () => {
     describe("successfully places bid", () => {
       beforeEach(async () => {
-        await nft.connect(minter).safeMint(minter.address, firstTokenId);
         await auction.setNowOverride("1");
         await auction.connect(minter).createAuction(
           nft.address,

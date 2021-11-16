@@ -8,7 +8,7 @@ import {
   SoundchainMarketplace__factory,
 } from "../typechain";
 
-describe.skip("Marketplace and Soundchain Token", () => {
+describe("Marketplace and Soundchain Token", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
   const platformFee = "25"; // marketplace platform fee: 2.5%
