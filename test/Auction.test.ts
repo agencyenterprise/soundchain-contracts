@@ -43,7 +43,7 @@ describe("Auction and Soundchain Token", () => {
 
   describe("Listing Item", () => {
     describe("validation", async () => {
-      it("fails if endTime is in the past", async () => {
+      it("reverts if endTime is in the past", async () => {
         await auction.setNowOverride("12");
         await expect(
           auction
@@ -54,7 +54,7 @@ describe("Auction and Soundchain Token", () => {
         );
       });
 
-      it("fails if startTime less than now", async () => {
+      it("reverts if startTime less than now", async () => {
         await auction.setNowOverride("2");
         await expect(
           auction
@@ -63,7 +63,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("invalid start time");
       });
 
-      it("fails if nft already has auction in play", async () => {
+      it("reverts if nft already has auction in play", async () => {
         await auction
           .connect(minter)
           .createAuction(
@@ -89,7 +89,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("auction already started");
       });
 
-      it("fails if token does not exist", async () => {
+      it("reverts if token does not exist", async () => {
         await auction.setNowOverride("10");
 
         await expect(
@@ -99,7 +99,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("ERC721: owner query for nonexistent token");
       });
 
-      it("fails if contract is paused", async () => {
+      it("reverts if contract is paused", async () => {
         await auction.setNowOverride("2");
         await auction.connect(owner).toggleIsPaused();
         await expect(
@@ -109,7 +109,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("contract paused");
       });
 
-      it("fails if you don't own the nft", async () => {
+      it("reverts if you don't own the nft", async () => {
         await auction
           .connect(minter)
           .createAuction(
@@ -130,7 +130,7 @@ describe("Auction and Soundchain Token", () => {
     });
 
     describe("successful creation", async () => {
-      it("Token retains in the ownership of the auction creator", async () => {
+      it("token retains in the ownership of the auction creator", async () => {
         await auction
           .connect(minter)
           .createAuction(
@@ -148,7 +148,67 @@ describe("Auction and Soundchain Token", () => {
     });
   });
 
-  describe("placeBid()", async () => {
+  describe("placeBid", async () => {
+    describe("validation", () => {
+      beforeEach(async () => {
+        await auction.setNowOverride("2");
+
+        await auction.connect(minter).createAuction(
+          nft.address,
+          firstTokenId,
+          "1", // reserve
+          "3", // start
+          true,
+          "400" // end
+        );
+      });
+
+      it("reverts with 721 token not on auction", async () => {
+        await expect(
+          auction.connect(buyer).placeBid(nft.address, 999, { value: 1 })
+        ).to.be.revertedWith("bidding outside of the auction window");
+      });
+
+      it("reverts with valid token but no auction", async () => {
+        await expect(
+          auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+            value: 1,
+          })
+        ).to.be.revertedWith("bidding outside of the auction window");
+      });
+
+      it("reverts when auction finished", async () => {
+        await auction.setNowOverride("500");
+        await expect(
+          auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+            value: 1,
+          })
+        ).to.be.revertedWith("bidding outside of the auction window");
+      });
+
+      it("reverts when contract is paused", async () => {
+        await auction.connect(owner).toggleIsPaused();
+        await expect(
+          auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+            value: 10000000,
+          })
+        ).to.be.revertedWith("contract paused");
+      });
+
+      it("reverts when outbidding someone by less than the increment", async () => {
+        await auction.setNowOverride("4");
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 20000000,
+        });
+
+        await expect(
+          auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+            value: 20000000,
+          })
+        ).to.be.revertedWith("failed to outbid highest bidder");
+      });
+    });
+
     describe("successfully places bid", () => {
       beforeEach(async () => {
         await auction.setNowOverride("1");
@@ -211,7 +271,7 @@ describe("Auction and Soundchain Token", () => {
         expect(_bidder).to.equal(buyer2.address);
       });
 
-      it("successfully increases bid", async () => {
+      it("increases bid", async () => {
         await auction.setNowOverride("2");
 
         await expect(() =>
@@ -242,7 +302,7 @@ describe("Auction and Soundchain Token", () => {
         expect(newBidder).to.equal(buyer.address);
       });
 
-      it("successfully outbid bidder", async () => {
+      it("outbid bidder", async () => {
         await auction.setNowOverride("2");
 
         // Bidder 1 makes first bid
