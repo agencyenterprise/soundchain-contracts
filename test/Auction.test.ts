@@ -335,5 +335,92 @@ describe("Auction and Soundchain Token", () => {
         expect(newBidder).to.equal(buyer2.address);
       });
     });
+
+    describe("withdrawBid", async () => {
+      beforeEach(async () => {
+        await auction.setNowOverride("1");
+        await auction.connect(minter).createAuction(
+          nft.address,
+          firstTokenId,
+          "1", // reserve
+          "2", // start
+          true,
+          "400" // end
+        );
+        await auction.setNowOverride("3");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, { value: 200000000000000000n });
+      });
+
+      it("reverts with withdrawing a bid which does not exist", async () => {
+        await expect(
+          auction.connect(buyer2).withdrawBid(nft.address, 999)
+        ).to.be.revertedWith("you are not the highest bidder");
+      });
+
+      it("reverts with withdrawing a bid which you did not make", async () => {
+        await expect(
+          auction.connect(buyer2).withdrawBid(nft.address, firstTokenId)
+        ).to.be.revertedWith("you are not the highest bidder");
+      });
+
+      it("reverts with withdrawing when lockout time not passed", async () => {
+        await auction.updateBidWithdrawalLockTime("6");
+        await auction.setNowOverride("5");
+        await expect(
+          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
+        ).to.be.revertedWith(
+          "can withdraw only after 12 hours (after auction ended)"
+        );
+      });
+
+      it("reverts when withdrawing after auction end", async () => {
+        await auction.setNowOverride("401");
+        await auction.updateBidWithdrawalLockTime("0");
+        await expect(
+          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
+        ).to.be.revertedWith(
+          "can withdraw only after 12 hours (after auction ended)"
+        );
+      });
+
+      it("reverts when the contract is paused", async () => {
+        const { _bidder: originalBidder, _bid: originalBid } =
+          await auction.getHighestBidder(nft.address, firstTokenId);
+        expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
+        expect(originalBidder).to.equal(buyer.address);
+
+        // remove the withdrawal lock time for the test
+        await auction.updateBidWithdrawalLockTime("0");
+
+        await auction.toggleIsPaused();
+        await expect(
+          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
+        ).to.be.revertedWith("contract paused");
+      });
+
+      it("successfully withdraw the bid", async () => {
+        const { _bidder: originalBidder, _bid: originalBid } =
+          await auction.getHighestBidder(nft.address, firstTokenId);
+        expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
+        expect(originalBidder).to.equal(buyer.address);
+
+        // remove the withdrawal lock time for the test
+        await auction.updateBidWithdrawalLockTime("0");
+        await auction.setNowOverride("400000");
+
+        await expect(() =>
+          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
+        ).to.changeEtherBalances([buyer], [200000000000000000n]);
+
+        const { _bidder, _bid } = await auction.getHighestBidder(
+          nft.address,
+          firstTokenId
+        );
+        expect(_bid).to.be.equal(BigNumber.from(0));
+        expect(_bidder).to.equal("0x0000000000000000000000000000000000000000");
+      });
+    });
   });
 });
