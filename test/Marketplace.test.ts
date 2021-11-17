@@ -1,14 +1,14 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { Contract } from "ethers";
 import { ethers } from "hardhat";
 import {
   Soundchain721,
   Soundchain721__factory,
+  SoundchainMarketplace,
   SoundchainMarketplace__factory,
-} from "../typechain";
+} from "../typechain-types";
 
-describe("Marketplace and Soundchain Token", () => {
+describe("marketplace", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
   const platformFee = "25"; // marketplace platform fee: 2.5%
@@ -22,7 +22,7 @@ describe("Marketplace and Soundchain Token", () => {
     buyer2: SignerWithAddress,
     nft: Soundchain721,
     feeAddress: SignerWithAddress,
-    marketplace: Contract;
+    marketplace: SoundchainMarketplace;
 
   beforeEach(async () => {
     [owner, safeMinter, buyer, feeAddress, buyer2] = await ethers.getSigners();
@@ -44,7 +44,7 @@ describe("Marketplace and Soundchain Token", () => {
     await nft.safeMint(safeMinter.address, tokenUri);
   });
 
-  describe("Listing Item", () => {
+  describe("list item", () => {
     it("reverts when not owning NFT", async () => {
       expect(
         marketplace.listItem(
@@ -76,7 +76,7 @@ describe("Marketplace and Soundchain Token", () => {
     });
   });
 
-  describe("Canceling Item", () => {
+  describe("cancel listing", () => {
     beforeEach(async () => {
       await nft
         .connect(safeMinter)
@@ -105,7 +105,7 @@ describe("Marketplace and Soundchain Token", () => {
     });
   });
 
-  describe("Updating Item Price", () => {
+  describe("update listing", () => {
     beforeEach(async () => {
       await nft
         .connect(safeMinter)
@@ -134,7 +134,7 @@ describe("Marketplace and Soundchain Token", () => {
     });
   });
 
-  describe("Buying Item", () => {
+  describe("buy item", () => {
     beforeEach(async () => {
       await nft
         .connect(safeMinter)
@@ -198,7 +198,7 @@ describe("Marketplace and Soundchain Token", () => {
     });
   });
 
-  describe("Royalties", () => {
+  describe("royalties", () => {
     beforeEach(async () => {
       nft.connect(safeMinter).setApprovalForAll(marketplace.address, true);
     });

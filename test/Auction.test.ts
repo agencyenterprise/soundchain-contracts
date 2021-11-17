@@ -1,15 +1,17 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
-import { BigNumber, Contract } from "ethers";
+import { BigNumber } from "ethers";
 import { ethers } from "hardhat";
 import {
   Soundchain721,
   Soundchain721__factory,
+  SoundchainAuctionMock,
   SoundchainAuctionMock__factory,
+  SoundchainMarketplace,
   SoundchainMarketplace__factory,
-} from "../typechain";
+} from "../typechain-types";
 
-describe("Auction and Soundchain Token", () => {
+describe("auction", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
   const platformFee = "25"; // marketplace platform fee: 2.5%
@@ -21,8 +23,8 @@ describe("Auction and Soundchain Token", () => {
     buyer2: SignerWithAddress,
     nft: Soundchain721,
     feeAddress: SignerWithAddress,
-    auction: Contract,
-    marketplace: Contract;
+    auction: SoundchainAuctionMock,
+    marketplace: SoundchainMarketplace;
 
   beforeEach(async () => {
     [owner, minter, buyer, feeAddress, buyer2] = await ethers.getSigners();
@@ -51,7 +53,7 @@ describe("Auction and Soundchain Token", () => {
     await nft.connect(owner).setApprovalForAll(auction.address, true);
   });
 
-  describe("Listing Item", () => {
+  describe("create auction", () => {
     describe("validation", async () => {
       it("reverts if endTime is in the past", async () => {
         await auction.setNowOverride("12");
@@ -346,7 +348,7 @@ describe("Auction and Soundchain Token", () => {
       });
     });
 
-    describe("withdrawBid", async () => {
+    describe("withdraw bid", async () => {
       beforeEach(async () => {
         await auction.setNowOverride("1");
         await auction.connect(minter).createAuction(
@@ -427,7 +429,7 @@ describe("Auction and Soundchain Token", () => {
     });
   });
 
-  describe("resultAuction", async () => {
+  describe("result auction", async () => {
     describe("validation", () => {
       beforeEach(async () => {
         await nft.connect(minter).safeMint(minter.address, tokenUri);
@@ -437,13 +439,13 @@ describe("Auction and Soundchain Token", () => {
           .createAuction(nft.address, firstTokenId, "2", "3", true, "400");
       });
 
-      it("cannot result if not an owner", async () => {
+      it("reverts if it's not the owner", async () => {
         await expect(
           auction.connect(buyer).resultAuction(nft.address, firstTokenId)
         ).to.be.revertedWith("sender must be item owner");
       });
 
-      it("cannot result if auction has not ended", async () => {
+      it("reverts if auction has not ended", async () => {
         await expect(
           auction.connect(minter).resultAuction(nft.address, firstTokenId)
         ).to.be.revertedWith("auction not ended");
@@ -460,7 +462,7 @@ describe("Auction and Soundchain Token", () => {
       //   ).to.be.revertedWith("reserve not reached");
       // });
 
-      it("cannot result if the auction has no winner", async () => {
+      it("reverts if the auction has no winner", async () => {
         // Lower reserve to zero
         await auction
           .connect(minter)
@@ -471,7 +473,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("no open bids");
       });
 
-      it("cannot result if the auction if its already resulted", async () => {
+      it("reverts if the auction if its already resulted", async () => {
         await auction.setNowOverride("4");
         await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
           value: 1000000000000n,
@@ -547,7 +549,7 @@ describe("Auction and Soundchain Token", () => {
     });
   });
 
-  describe("cancelAuction()", async () => {
+  describe("cancel auction", async () => {
     beforeEach(async () => {
       await nft.connect(minter).safeMint(minter.address, tokenUri);
       await auction.setNowOverride("2");
@@ -558,13 +560,13 @@ describe("Auction and Soundchain Token", () => {
     });
 
     describe("validation", async () => {
-      it("cannot cancel if not an admin", async () => {
+      it("reverts if not an admin", async () => {
         await expect(
           auction.connect(buyer).cancelAuction(nft.address, firstTokenId)
         ).to.be.revertedWith("sender must be owner");
       });
 
-      it("cannot cancel if auction already cancelled", async () => {
+      it("reverts if auction already cancelled", async () => {
         await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
           value: 20000000n,
         });
@@ -577,7 +579,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("sender must be owner");
       });
 
-      it("cannot cancel if auction already resulted", async () => {
+      it("reverts if auction already resulted", async () => {
         await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
           value: 20000000n,
         });
@@ -590,7 +592,7 @@ describe("Auction and Soundchain Token", () => {
         ).to.be.revertedWith("sender must be owner");
       });
 
-      it("Cancel clears down auctions and top bidder", async () => {
+      it("cancel clears down auctions and top bidder", async () => {
         // Stick a bid on it
         await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
           value: 20000000n,

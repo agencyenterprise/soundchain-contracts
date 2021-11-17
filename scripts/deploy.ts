@@ -42,11 +42,8 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const main = async () => {
   console.log("💡 Deploying SoundchainCollectible");
-  const SoundchainCollectible = await ethers.getContractFactory(
-    "SoundchainCollectible"
-  );
-  const soundchainNFTDeployTransaction =
-    SoundchainCollectible.getDeployTransaction();
+  const Soundchain721 = await ethers.getContractFactory("Soundchain721");
+  const soundchainNFTDeployTransaction = Soundchain721.getDeployTransaction();
   const soundchainNFTSigned = await getSignedTransaction(
     soundchainNFTDeployTransaction.data
   );
