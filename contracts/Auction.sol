@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 
-pragma solidity ^0.8.0;
+pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -8,10 +8,6 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-interface ISoundchainAddressRegistry {
-    function marketplace() external view returns (address);
-}
 
 interface ISoundchainMarketplace {
     function minters(address, uint256) external view returns (address);
@@ -25,9 +21,6 @@ interface ISoundchainMarketplace {
 contract SoundchainAuction is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using Address for address payable;
-
-    /// @notice Event emitted only on construction. To be used by indexers
-    event SoundchainAuctionContractDeployed();
 
     event PauseToggled(bool isPaused);
 
@@ -59,8 +52,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     event UpdatePlatformFeeRecipient(address payable platformFeeRecipient);
 
     event UpdateMinBidIncrement(uint256 minBidIncrement);
-
-    event UpdateBidWithdrawalLockTime(uint256 bidWithdrawalLockTime);
 
     event BidPlaced(
         address indexed nftAddress,
@@ -119,9 +110,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     /// @notice globally and across all auctions, the amount by which a bid has to increase
     uint256 public minBidIncrement = 1;
 
-    /// @notice global bid withdrawal lock time
-    uint256 public bidWithdrawalLockTime = 20 minutes;
-
     /// @notice global platform fee, assumed to always be to 1 decimal place i.e. 25 = 2.5%
     uint256 public platformFee = 25;
 
@@ -148,7 +136,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
-        emit SoundchainAuctionContractDeployed();
     }
 
     /**
@@ -334,10 +321,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         emit BidWithdrawn(_nftAddress, _tokenId, _msgSender(), previousBid);
     }
 
-    //////////
-    // Admin /
-    //////////
-
     /**
      @notice Closes a finished auction and rewards the highest bidder
      @dev Only admin or smart contract
@@ -507,19 +490,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     }
 
     /**
-     @notice Update the global bid withdrawal lockout time
-     @dev Only admin
-     @param _bidWithdrawalLockTime New bid withdrawal lock time
-     */
-    function updateBidWithdrawalLockTime(uint256 _bidWithdrawalLockTime)
-        external
-        onlyOwner
-    {
-        bidWithdrawalLockTime = _bidWithdrawalLockTime;
-        emit UpdateBidWithdrawalLockTime(_bidWithdrawalLockTime);
-    }
-
-    /**
      @notice Update the current reserve price for an auction
      @dev Only admin
      @dev Auction must exist
@@ -643,9 +613,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         emit UpdatePlatformFeeRecipient(_platformFeeRecipient);
     }
 
-    ///////////////
-    // Accessors //
-    ///////////////
 
     /**
      @notice Method for getting all info about the auction
@@ -690,14 +657,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     {
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
         return (highestBid.bidder, highestBid.bid, highestBid.lastBidTime);
-    }
-
-    /////////////////////////
-    // Internal and Private /
-    /////////////////////////
-
-    function _getNow() internal view virtual returns (uint256) {
-        return block.timestamp;
     }
 
     /**
@@ -781,8 +740,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         address payable _currentHighestBidder,
         uint256 _currentHighestBid
     ) private {
-        Auction memory auction = auctions[_nftAddress][_tokenId];
-        // refund previous best (if bid exists)
         (bool successRefund, ) = _currentHighestBidder.call{
             value: _currentHighestBid
         }("");
@@ -795,15 +752,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         );
     }
 
-    /**
-     * @notice Reclaims ERC20 Compatible tokens for entire balance
-     * @dev Only access controls admin
-     * @param _tokenContract The address of the token contract
-     */
-    function reclaimERC20(address _tokenContract) external onlyOwner {
-        require(_tokenContract != address(0), "Invalid address");
-        IERC20 token = IERC20(_tokenContract);
-        uint256 balance = token.balanceOf(address(this));
-        require(token.transfer(_msgSender(), balance), "Transfer failed");
+
+    function _getNow() internal view virtual returns (uint256) {
+        return block.timestamp;
     }
 }

@@ -376,7 +376,6 @@ describe("Auction and Soundchain Token", () => {
       });
 
       it("reverts with withdrawing when lockout time not passed", async () => {
-        await auction.updateBidWithdrawalLockTime("6");
         await auction.setNowOverride("5");
         await expect(
           auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
@@ -387,7 +386,6 @@ describe("Auction and Soundchain Token", () => {
 
       it("reverts when withdrawing after auction end", async () => {
         await auction.setNowOverride("401");
-        await auction.updateBidWithdrawalLockTime("0");
         await expect(
           auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
         ).to.be.revertedWith(
@@ -401,9 +399,6 @@ describe("Auction and Soundchain Token", () => {
         expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
         expect(originalBidder).to.equal(buyer.address);
 
-        // remove the withdrawal lock time for the test
-        await auction.updateBidWithdrawalLockTime("0");
-
         await auction.toggleIsPaused();
         await expect(
           auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
@@ -416,8 +411,6 @@ describe("Auction and Soundchain Token", () => {
         expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
         expect(originalBidder).to.equal(buyer.address);
 
-        // remove the withdrawal lock time for the test
-        await auction.updateBidWithdrawalLockTime("0");
         await auction.setNowOverride("400000");
 
         await expect(() =>
