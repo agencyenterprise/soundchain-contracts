@@ -323,7 +323,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
     /**
      @notice Closes a finished auction and rewards the highest bidder
-     @dev Only admin or smart contract
      @dev Auction can only be resulted if there has been a bidder and reserve met.
      @dev If there have been no bids, the auction needs to be cancelled instead using `cancelAuction()`
      @param _nftAddress ERC 721 Address
@@ -335,10 +334,13 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     {
         // Check the auction to see if it can be resulted
         Auction storage auction = auctions[_nftAddress][_tokenId];
+        HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
+        address winner = highestBid.bidder;
+        uint256 winningBid = highestBid.bid;
 
         require(
-            IERC721(_nftAddress).ownerOf(_tokenId) == _msgSender() &&
-                _msgSender() == auction.owner,
+            (IERC721(_nftAddress).ownerOf(_tokenId) == _msgSender() &&
+                _msgSender() == auction.owner) || _msgSender() == winner,
             "sender must be item owner"
         );
 
@@ -351,11 +353,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         // Ensure auction not already resulted
         require(!auction.resulted, "auction already resulted");
 
-        // Get info on who the highest bidder is
-        HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
-        address winner = highestBid.bidder;
-        uint256 winningBid = highestBid.bid;
-
         // Ensure there is a winner
         require(winner != address(0), "no open bids");
         require(
@@ -365,7 +362,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         // Ensure this contract is approved to move the token
         require(
-            IERC721(_nftAddress).isApprovedForAll(_msgSender(), address(this)),
+            IERC721(_nftAddress).isApprovedForAll(auction.owner, address(this)),
             "auction not approved"
         );
 
@@ -430,7 +427,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         );
 
         emit AuctionResulted(
-            _msgSender(),
+            auction.owner,
             _nftAddress,
             _tokenId,
             winner,
