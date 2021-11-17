@@ -553,4 +553,165 @@ describe("Auction and Soundchain Token", () => {
       // });
     });
   });
+
+  describe("cancelAuction()", async () => {
+    beforeEach(async () => {
+      await nft.connect(minter).safeMint(minter.address, tokenUri);
+      await auction.setNowOverride("2");
+      await auction
+        .connect(minter)
+        .createAuction(nft.address, firstTokenId, "1", "3", true, "400");
+      await auction.setNowOverride("3");
+    });
+
+    describe("validation", async () => {
+      it("cannot cancel if not an admin", async () => {
+        await expect(
+          auction.connect(buyer).cancelAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("sender must be owner");
+      });
+
+      it("cannot cancel if auction already cancelled", async () => {
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 20000000n,
+        });
+        await auction.setNowOverride("12");
+
+        await auction.connect(minter).cancelAuction(nft.address, firstTokenId);
+
+        await expect(
+          auction.connect(minter).cancelAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("sender must be owner");
+      });
+
+      it("cannot cancel if auction already resulted", async () => {
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 20000000n,
+        });
+        await auction.setNowOverride("40000");
+
+        await auction.connect(minter).resultAuction(nft.address, firstTokenId);
+
+        await expect(
+          auction.connect(minter).cancelAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("sender must be owner");
+      });
+
+      it("Cancel clears down auctions and top bidder", async () => {
+        // Stick a bid on it
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 20000000n,
+        });
+
+        // Cancel it
+        await auction.connect(minter).cancelAuction(nft.address, firstTokenId);
+
+        // Check auction cleaned up
+        const { _reservePrice, _startTime, _endTime, _resulted } =
+          await auction.getAuction(nft.address, firstTokenId);
+        expect(_reservePrice).to.be.equal("0");
+        expect(_startTime).to.be.equal("0");
+        expect(_endTime).to.be.equal("0");
+        expect(_resulted).to.be.equal(false);
+
+        // Check auction cleaned up
+        const { _bidder, _bid } = await auction.getHighestBidder(
+          nft.address,
+          firstTokenId
+        );
+        expect(_bid).to.be.equal("0");
+        expect(_bidder).to.equal("0x0000000000000000000000000000000000000000");
+      });
+
+      it("funds are sent back to the highest bidder if found", async () => {
+        // Stick a bid on it
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 20000000n,
+        });
+
+        // const bidderTracker = await balance.tracker(bidder);
+
+        //cancel it
+        await auction.connect(minter).cancelAuction(nft.address, firstTokenId);
+
+        // Funds sent back
+        // const changes = await bidderTracker.delta("wei");
+        // expect(changes).to.be.bignumber.equal(ether("0.2"));
+      });
+    });
+  });
+
+  describe("create, cancel and re-create an auction", async () => {
+    beforeEach(async () => {
+      await nft.connect(minter).safeMint(minter.address, tokenUri);
+      await auction.setNowOverride("2");
+      await auction.connect(minter).createAuction(
+        nft.address,
+        firstTokenId, // ID
+        "1", // reserve
+        "3", // start
+        true,
+        "400" // end
+      );
+      await auction.setNowOverride("4");
+    });
+
+    it("once created and then cancelled, can be created and resulted properly", async () => {
+      // Stick a bid on it
+      await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+        value: 200000000n,
+      });
+
+      // const bidderTracker = await balance.tracker(bidder);
+
+      // Cancel it
+      await auction.connect(minter).cancelAuction(nft.address, firstTokenId);
+
+      // Funds sent back to bidder
+      // const changes = await bidderTracker.delta("wei");
+      // expect(changes).to.be.bignumber.equal(ether("0.2"));
+
+      // Check auction cleaned up
+      const { _reservePrice, _startTime, _endTime, _resulted } =
+        await auction.getAuction(nft.address, firstTokenId);
+      expect(_reservePrice).to.be.equal("0");
+      expect(_startTime).to.be.equal("0");
+      expect(_endTime).to.be.equal("0");
+      expect(_resulted).to.be.equal(false);
+
+      // Crate new one
+      await auction.connect(minter).createAuction(
+        nft.address,
+        firstTokenId, // ID
+        "1", // reserve
+        "5", // start
+        true,
+        "401" // end
+      );
+
+      // Check auction newly setup
+      const {
+        _reservePrice: newReservePrice,
+        _startTime: newStartTime,
+        _endTime: newEndTime,
+        _resulted: newResulted,
+      } = await auction.getAuction(nft.address, firstTokenId);
+      expect(newReservePrice).to.be.equal("1");
+      expect(newStartTime).to.be.equal("5");
+      expect(newEndTime).to.be.equal("401");
+      expect(newResulted).to.be.equal(false);
+
+      await auction.setNowOverride("6");
+
+      // Stick a bid on it
+      await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+        value: 200000000n,
+      });
+
+      await auction.setNowOverride("4000");
+
+      // Result it
+      await auction.connect(minter).resultAuction(nft.address, firstTokenId);
+    });
+  });
 });
