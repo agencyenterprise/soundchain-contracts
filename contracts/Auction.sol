@@ -208,35 +208,9 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             _getNow() >= auction.startTime && _getNow() <= auction.endTime,
             "bidding outside of the auction window"
         );
-        // require(auction.payToken == address(0), "invalid pay token");
 
         _placeBid(_nftAddress, _tokenId, msg.value);
     }
-
-    // /**
-    //  @notice Places a new bid, out bidding the existing bidder if found and criteria is reached
-    //  @dev Only callable when the auction is open
-    //  @dev Bids from smart contracts are prohibited to prevent griefing with always reverting receiver
-    //  @param _nftAddress ERC 721 Address
-    //  @param _tokenId Token ID of the item being auctioned
-    //  @param _bidAmount Bid amount
-    //  */
-    // function placeBid(
-    //     address _nftAddress,
-    //     uint256 _tokenId,
-    //     uint256 _bidAmount
-    // ) external nonReentrant whenNotPaused {
-    //     // Check the auction to see if this is a valid bid
-    //     Auction memory auction = auctions[_nftAddress][_tokenId];
-
-    //     // Ensure auction is in flight
-    //     require(
-    //         _getNow() >= auction.startTime && _getNow() <= auction.endTime,
-    //         "bidding outside of the auction window"
-    //     );
-
-    //     _placeBid(_nftAddress, _tokenId, _bidAmount);
-    // }
 
     function _placeBid(
         address _nftAddress,
@@ -257,14 +231,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 minBidRequired = highestBid.bid.add(minBidIncrement);
 
         require(_bidAmount >= minBidRequired, "failed to outbid highest bidder");
-
-        // if (auction.payToken != address(0)) {
-        //     IERC20 payToken = IERC20(auction.payToken);
-        //     require(
-        //         payToken.transferFrom(_msgSender(), address(this), _bidAmount),
-        //         "insufficient balance or not approved"
-        //     );
-        // }
 
         // Refund existing top bidder if found
         if (highestBid.bidder != address(0)) {
