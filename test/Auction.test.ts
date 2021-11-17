@@ -6,6 +6,7 @@ import {
   Soundchain721,
   Soundchain721__factory,
   SoundchainAuctionMock__factory,
+  SoundchainMarketplace__factory,
 } from "../typechain";
 
 describe("Auction and Soundchain Token", () => {
@@ -20,10 +21,19 @@ describe("Auction and Soundchain Token", () => {
     buyer2: SignerWithAddress,
     nft: Soundchain721,
     feeAddress: SignerWithAddress,
-    auction: Contract;
+    auction: Contract,
+    marketplace: Contract;
 
   beforeEach(async () => {
     [owner, minter, buyer, feeAddress, buyer2] = await ethers.getSigners();
+
+    const MarketplaceFactory: SoundchainMarketplace__factory =
+      await ethers.getContractFactory("SoundchainMarketplace");
+
+    marketplace = await MarketplaceFactory.deploy(
+      feeAddress.address,
+      platformFee
+    );
 
     const SoundchainCollectible: Soundchain721__factory =
       await ethers.getContractFactory("Soundchain721");
@@ -31,9 +41,9 @@ describe("Auction and Soundchain Token", () => {
 
     const AuctionFactory: SoundchainAuctionMock__factory =
       await ethers.getContractFactory("SoundchainAuctionMock");
-
     auction = await AuctionFactory.deploy(feeAddress.address, platformFee);
 
+    await auction.updateMarketplace(marketplace.address);
     await nft.safeMint(minter.address, tokenUri);
     await nft.safeMint(owner.address, tokenUri);
     await nft.safeMint(minter.address, tokenUri);
@@ -421,6 +431,126 @@ describe("Auction and Soundchain Token", () => {
         expect(_bid).to.be.equal(BigNumber.from(0));
         expect(_bidder).to.equal("0x0000000000000000000000000000000000000000");
       });
+    });
+  });
+
+  describe("resultAuction", async () => {
+    describe("validation", () => {
+      beforeEach(async () => {
+        await nft.connect(minter).safeMint(minter.address, tokenUri);
+        await auction.setNowOverride("2");
+        await auction
+          .connect(minter)
+          .createAuction(nft.address, firstTokenId, "2", "3", true, "400");
+      });
+
+      it("cannot result if not an owner", async () => {
+        await expect(
+          auction.connect(buyer).resultAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("sender must be item owner");
+      });
+
+      it("cannot result if auction has not ended", async () => {
+        await expect(
+          auction.connect(minter).resultAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("auction not ended");
+      });
+
+      // it("cannot result if the auction is reserve not reached", async () => {
+      //   await auction.setNowOverride("4");
+      //   await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+      //     value: 1n,
+      //   });
+      //   await auction.setNowOverride("40000");
+      //   await expect(
+      //     auction.connect(minter).resultAuction(nft.address, firstTokenId)
+      //   ).to.be.revertedWith("reserve not reached");
+      // });
+
+      it("cannot result if the auction has no winner", async () => {
+        // Lower reserve to zero
+        await auction
+          .connect(minter)
+          .updateAuctionReservePrice(nft.address, firstTokenId, "0");
+        await auction.setNowOverride("40000");
+        await expect(
+          auction.connect(minter).resultAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("no open bids");
+      });
+
+      it("cannot result if the auction if its already resulted", async () => {
+        await auction.setNowOverride("4");
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 1000000000000n,
+        });
+        await auction.setNowOverride("40000");
+
+        await auction.connect(minter).resultAuction(nft.address, firstTokenId);
+
+        await expect(
+          auction.connect(minter).resultAuction(nft.address, firstTokenId)
+        ).to.be.revertedWith("sender must be item owner");
+      });
+    });
+
+    describe("successfully resulting an auction", async () => {
+      beforeEach(async () => {
+        await nft.connect(minter).safeMint(minter.address, tokenUri);
+        await auction.setNowOverride("2");
+        await auction
+          .connect(minter)
+          .createAuction(nft.address, firstTokenId, "1", "3", true, "400");
+        await auction.setNowOverride("4");
+      });
+
+      it("transfer token to the winner", async () => {
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 2000000000000n,
+        });
+        await auction.setNowOverride("40000");
+
+        expect(await nft.ownerOf(firstTokenId)).to.be.equal(minter.address);
+
+        await auction.connect(minter).resultAuction(nft.address, firstTokenId);
+
+        expect(await nft.ownerOf(firstTokenId)).to.be.equal(buyer.address);
+      });
+
+      it("transfer funds to the token creator and platform", async () => {
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 4000000000000n,
+        });
+        await auction.setNowOverride("40000");
+
+        // Result it successfully
+        await expect(() =>
+          auction.connect(minter).resultAuction(nft.address, firstTokenId)
+        ).to.changeEtherBalances(
+          [minter, feeAddress],
+          [3900000000001n, 99999999999n]
+        );
+      });
+
+      // it("transfer funds to the token to only the creator when reserve meet directly", async () => {
+      //   await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+      //     value: 1000000000000n,
+      //   });
+      //   await auction.setNowOverride("40000");
+
+      //   // const platformFeeTracker = await balance.tracker(platformFeeAddress);
+      //   // const minterTracker = await balance.tracker(minter);
+
+      //   // Result it successfully
+      //   await auction.connect(minter).resultAuction(nft.address, firstTokenId);
+
+      //   // Platform gets 12%
+      //   // const platformChanges = await platformFeeTracker.delta("wei");
+      //   // expect(platformChanges).to.be.bignumber.equal("0");
+
+      //   // Remaining funds sent to designer on completion
+      //   // const changes = await minterTracker.delta("wei");
+      //   // expect(changes).to.be.bignumber.greaterThan(ether("0"));
+      // });
     });
   });
 });

@@ -129,7 +129,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     address payable public platformFeeRecipient;
 
     /// @notice Address registry
-    ISoundchainAddressRegistry public addressRegistry;
+    address public marketplace;
 
     /// @notice for switching off auction creations, bids and withdrawals
     bool public isPaused;
@@ -149,6 +149,14 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
         emit SoundchainAuctionContractDeployed();
+    }
+
+    /**
+     @notice Update Marketplace contract
+     @dev Only admin
+     */
+    function updateMarketplace(address _marketplace) external onlyOwner {
+        marketplace = _marketplace;
     }
 
     /**
@@ -407,12 +415,9 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         } else {
             payAmount = winningBid;
         }
-
-        ISoundchainMarketplace marketplace = ISoundchainMarketplace(
-            addressRegistry.marketplace()
-        );
-        address minter = marketplace.minters(_nftAddress, _tokenId);
-        uint16 royalty = marketplace.royalties(_nftAddress, _tokenId);
+        ISoundchainMarketplace marketplaceInterface = ISoundchainMarketplace(marketplace);
+        address minter = marketplaceInterface.minters(_nftAddress, _tokenId);
+        uint16 royalty = marketplaceInterface.royalties(_nftAddress, _tokenId);
         if (minter != address(0) && royalty != 0) {
             uint256 royaltyFee = payAmount.mul(royalty).div(10000);
             (bool royaltyTransferSuccess, ) = payable(minter).call{
@@ -636,14 +641,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         platformFeeRecipient = _platformFeeRecipient;
         emit UpdatePlatformFeeRecipient(_platformFeeRecipient);
-    }
-
-    /**
-     @notice Update SoundchainAddressRegistry contract
-     @dev Only admin
-     */
-    function updateAddressRegistry(address _registry) external onlyOwner {
-        addressRegistry = ISoundchainAddressRegistry(_registry);
     }
 
     ///////////////
