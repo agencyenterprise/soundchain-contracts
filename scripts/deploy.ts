@@ -70,6 +70,20 @@ const main = async () => {
     `✅ Marketplace deployed to address: ${marketplaceReceipt.contractAddress}`
   );
 
+  console.log("💡 Deploying Auction");
+  const AuctionFactory = await ethers.getContractFactory("SoundchainAuction");
+  const auctionDeployTransaction = AuctionFactory.getDeployTransaction(
+    FEE_RECIPIENT_ADDRESS,
+    PLATFORM_FEE
+  );
+  const auctionSigned = await getSignedTransaction(
+    auctionDeployTransaction.data
+  );
+  const auctionReceipt = await sendSignedTransaction(auctionSigned.raw);
+  console.log(
+    `✅ Auction deployed to address: ${auctionReceipt.contractAddress}`
+  );
+
   console.log("⏰ Waiting confirmations");
   await delay(240000);
 
@@ -85,6 +99,12 @@ const main = async () => {
     constructorArguments: [FEE_RECIPIENT_ADDRESS, PLATFORM_FEE],
   });
   console.log("✅ Marketplace verified on Etherscan");
+
+  await run("verify:verify", {
+    address: auctionReceipt.contractAddress,
+    constructorArguments: [FEE_RECIPIENT_ADDRESS, PLATFORM_FEE],
+  });
+  console.log("✅ Auction verified on Etherscan");
 };
 
 main()
