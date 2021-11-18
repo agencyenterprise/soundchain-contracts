@@ -9,7 +9,7 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
@@ -54,12 +54,6 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     }
 
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
-
-    /// @notice NftAddress -> Token ID -> Minter
-    mapping(address => mapping(uint256 => address)) public minters;
-
-    /// @notice NftAddress -> Token ID -> Royalty
-    mapping(address => mapping(uint256 => uint16)) public royalties;
 
     /// @notice NftAddress -> Token ID -> Owner -> Listing item
     mapping(address => mapping(uint256 => mapping(address => Listing)))
@@ -193,11 +187,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         );
         require(feeTransferSuccess, "fee transfer failed");
 
-        address minter = minters[_nftAddress][_tokenId];
-        uint16 royalty = royalties[_nftAddress][_tokenId];
-        if (minter != address(0) && royalty != 0) {
-            uint256 royaltyFee = price.sub(feeAmount).mul(royalty).div(10000);
-
+        (address minter, uint256 royaltyFee) = IERC2981(_nftAddress).royaltyInfo(_tokenId, price - feeAmount);
+        if (minter != address(0)) {
             (bool royaltyTransferSuccess, ) = payable(minter).call{
                 value: royaltyFee
             }("");
@@ -234,14 +225,12 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     /// @param _quantity token amount to list
     /// @param _pricePerItem sale price for each iteam
     /// @param _startingTime scheduling for a future sale
-    /// @param _royalty scheduling for a future sale
     function listItem(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _quantity,
         uint256 _pricePerItem,
-        uint256 _startingTime,
-        uint16 _royalty
+        uint256 _startingTime
     ) external notListed(_nftAddress, _tokenId, _msgSender()) {
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
             IERC721 nft = IERC721(_nftAddress);
@@ -268,14 +257,6 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             _pricePerItem,
             _startingTime
         );
-
-        address minter = minters[_nftAddress][_tokenId];
-        uint16 royalty = royalties[_nftAddress][_tokenId];
-        if (minter == address(0) && royalty == 0) {
-            require(_royalty <= 10000, "invalid royalty");
-            minters[_nftAddress][_tokenId] = _msgSender();
-            royalties[_nftAddress][_tokenId] = _royalty;
-        }
     }
 
     /**

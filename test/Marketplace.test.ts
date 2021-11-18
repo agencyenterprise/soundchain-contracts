@@ -39,22 +39,15 @@ describe("marketplace", () => {
       platformFee
     );
 
-    await nft.safeMint(safeMinter.address, tokenUri);
-    await nft.safeMint(owner.address, tokenUri);
-    await nft.safeMint(safeMinter.address, tokenUri);
+    await nft.safeMint(safeMinter.address, tokenUri, 10);
+    await nft.safeMint(owner.address, tokenUri, 10);
+    await nft.safeMint(safeMinter.address, tokenUri, 10);
   });
 
   describe("list item", () => {
     it("reverts when not owning NFT", async () => {
       expect(
-        marketplace.listItem(
-          nft.address,
-          firstTokenId,
-          "1",
-          pricePerItem,
-          "0",
-          0
-        )
+        marketplace.listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
       ).to.be.revertedWith("not owning item");
     });
 
@@ -62,7 +55,7 @@ describe("marketplace", () => {
       expect(
         marketplace
           .connect(safeMinter)
-          .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0)
+          .listItem(nft.address, firstTokenId, "1", pricePerItem, "0")
       ).to.be.revertedWith("item not approved");
     });
 
@@ -72,7 +65,7 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
   });
 
@@ -83,7 +76,7 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
 
     it("reverts when item is not listed", async () => {
@@ -112,7 +105,7 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
 
     it("reverts when item is not listed", async () => {
@@ -141,7 +134,7 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0", 0);
+        .listItem(nft.address, firstTokenId, "1", pricePerItem, "0");
     });
 
     it("reverts when seller doesn't own the item", async () => {
@@ -162,8 +155,7 @@ describe("marketplace", () => {
         secondTokenId,
         "1",
         pricePerItem,
-        2 ** 50,
-        0
+        2 ** 50
       );
       await expect(
         marketplace
@@ -203,21 +195,13 @@ describe("marketplace", () => {
       nft.connect(safeMinter).setApprovalForAll(marketplace.address, true);
     });
 
-    it("reverts when royalty is greater than 100%", async () => {
-      expect(
-        marketplace
-          .connect(safeMinter)
-          .listItem(nft.address, "2", "1", pricePerItem, "0", "20000")
-      ).to.be.revertedWith("invalid royalty");
-    });
+    // it("successfully set royalties on map", async () => {
+    //   await marketplace
+    //     .connect(safeMinter)
+    //     .listItem(nft.address, "2", "1", pricePerItem, "0", "100");
 
-    it("successfully set royalties on map", async () => {
-      await marketplace
-        .connect(safeMinter)
-        .listItem(nft.address, "2", "1", pricePerItem, "0", "100");
-
-      expect(await marketplace.royalties(nft.address, "2")).to.be.eq(100);
-    });
+    //   expect(await marketplace.royalties(nft.address, "2")).to.be.eq(100);
+    // });
 
     it("successfully transfer royalties", async () => {
       await nft
@@ -227,7 +211,7 @@ describe("marketplace", () => {
 
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, "2", "1", pricePerItem, "0", 1000);
+        .listItem(nft.address, "2", "1", pricePerItem, "0");
 
       await marketplace
         .connect(buyer)
@@ -237,7 +221,7 @@ describe("marketplace", () => {
 
       await marketplace
         .connect(buyer)
-        .listItem(nft.address, "2", "1", pricePerItem, "0", 0);
+        .listItem(nft.address, "2", "1", pricePerItem, "0");
       await expect(() =>
         marketplace.connect(buyer2).buyItem(nft.address, "2", buyer.address, {
           value: pricePerItem,

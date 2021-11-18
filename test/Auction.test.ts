@@ -46,9 +46,9 @@ describe("auction", () => {
     auction = await AuctionFactory.deploy(feeAddress.address, platformFee);
 
     await auction.updateMarketplace(marketplace.address);
-    await nft.safeMint(minter.address, tokenUri);
-    await nft.safeMint(owner.address, tokenUri);
-    await nft.safeMint(minter.address, tokenUri);
+    await nft.safeMint(minter.address, tokenUri, 10);
+    await nft.safeMint(owner.address, tokenUri, 10);
+    await nft.safeMint(minter.address, tokenUri, 10);
     await nft.connect(minter).setApprovalForAll(auction.address, true);
     await nft.connect(owner).setApprovalForAll(auction.address, true);
   });
@@ -412,7 +412,7 @@ describe("auction", () => {
   describe("result auction", async () => {
     describe("validation", () => {
       beforeEach(async () => {
-        await nft.connect(minter).safeMint(minter.address, tokenUri);
+        await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
@@ -420,9 +420,14 @@ describe("auction", () => {
       });
 
       it("reverts if it's not the owner", async () => {
+        await auction.setNowOverride("4");
+        await auction.connect(buyer2).placeBid(nft.address, firstTokenId, {
+          value: 2000000000000n,
+        });
+        await auction.setNowOverride("40000");
         await expect(
           auction.connect(buyer).resultAuction(nft.address, firstTokenId)
-        ).to.be.revertedWith("sender must be item owner");
+        ).to.be.revertedWith("sender must be item owner or winner");
       });
 
       it("reverts if auction has not ended", async () => {
@@ -470,7 +475,7 @@ describe("auction", () => {
 
     describe("successfully resulting an auction", async () => {
       beforeEach(async () => {
-        await nft.connect(minter).safeMint(minter.address, tokenUri);
+        await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
@@ -497,9 +502,22 @@ describe("auction", () => {
         });
         await auction.setNowOverride("40000");
 
-        // Result it successfully
         await expect(() =>
           auction.connect(minter).resultAuction(nft.address, firstTokenId)
+        ).to.changeEtherBalances(
+          [minter, feeAddress],
+          [3900000000001n, 99999999999n]
+        );
+      });
+
+      it("buyer can result the auction", async () => {
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+          value: 4000000000000n,
+        });
+        await auction.setNowOverride("40000");
+
+        await expect(() =>
+          auction.connect(buyer).resultAuction(nft.address, firstTokenId)
         ).to.changeEtherBalances(
           [minter, feeAddress],
           [3900000000001n, 99999999999n]
@@ -531,7 +549,7 @@ describe("auction", () => {
 
   describe("cancel auction", async () => {
     beforeEach(async () => {
-      await nft.connect(minter).safeMint(minter.address, tokenUri);
+      await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
       await auction.setNowOverride("2");
       await auction
         .connect(minter)
@@ -618,7 +636,7 @@ describe("auction", () => {
 
   describe("create, cancel and re-create an auction", async () => {
     beforeEach(async () => {
-      await nft.connect(minter).safeMint(minter.address, tokenUri);
+      await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
       await auction.setNowOverride("2");
       await auction.connect(minter).createAuction(
         nft.address,

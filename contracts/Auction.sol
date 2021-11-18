@@ -8,12 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-
-interface ISoundchainMarketplace {
-    function minters(address, uint256) external view returns (address);
-
-    function royalties(address, uint256) external view returns (uint16);
-}
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
 /**
  * @notice Secondary sale auction contract for NFTs
@@ -307,7 +302,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         require(
             (IERC721(_nftAddress).ownerOf(_tokenId) == _msgSender() &&
                 _msgSender() == auction.owner) || _msgSender() == winner,
-            "sender must be item owner"
+            "sender must be item owner or winner"
         );
 
         // Check the auction real
@@ -361,11 +356,9 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         } else {
             payAmount = winningBid;
         }
-        ISoundchainMarketplace marketplaceInterface = ISoundchainMarketplace(marketplace);
-        address minter = marketplaceInterface.minters(_nftAddress, _tokenId);
-        uint16 royalty = marketplaceInterface.royalties(_nftAddress, _tokenId);
-        if (minter != address(0) && royalty != 0) {
-            uint256 royaltyFee = payAmount.mul(royalty).div(10000);
+
+        (address minter, uint256 royaltyFee) = IERC2981(_nftAddress).royaltyInfo(_tokenId, payAmount);
+        if (minter != address(0)) {
             (bool royaltyTransferSuccess, ) = payable(minter).call{
                 value: royaltyFee
             }("");
