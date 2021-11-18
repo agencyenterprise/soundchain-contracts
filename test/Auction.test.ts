@@ -377,24 +377,6 @@ describe("auction", () => {
         ).to.be.revertedWith("you are not the highest bidder");
       });
 
-      it("reverts with withdrawing when lockout time not passed", async () => {
-        await auction.setNowOverride("5");
-        await expect(
-          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
-        ).to.be.revertedWith(
-          "can withdraw only after 12 hours (after auction ended)"
-        );
-      });
-
-      it("reverts when withdrawing after auction end", async () => {
-        await auction.setNowOverride("401");
-        await expect(
-          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
-        ).to.be.revertedWith(
-          "can withdraw only after 12 hours (after auction ended)"
-        );
-      });
-
       it("reverts when the contract is paused", async () => {
         const { _bidder: originalBidder, _bid: originalBid } =
           await auction.getHighestBidder(nft.address, firstTokenId);
@@ -412,8 +394,6 @@ describe("auction", () => {
           await auction.getHighestBidder(nft.address, firstTokenId);
         expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
         expect(originalBidder).to.equal(buyer.address);
-
-        await auction.setNowOverride("400000");
 
         await expect(() =>
           auction.connect(buyer).withdrawBid(nft.address, firstTokenId)

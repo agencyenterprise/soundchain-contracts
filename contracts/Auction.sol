@@ -272,8 +272,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 _endTime = auctions[_nftAddress][_tokenId].endTime;
 
         require(
-            _getNow() > _endTime && (_getNow() - _endTime >= 43200),
-            "can withdraw only after 12 hours (after auction ended)"
+            _getNow() < _endTime,
+            "can't withdraw if has ended"
         );
 
         uint256 previousBid = highestBid.bid;
