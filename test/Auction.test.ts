@@ -45,7 +45,6 @@ describe("auction", () => {
       await ethers.getContractFactory("SoundchainAuctionMock");
     auction = await AuctionFactory.deploy(feeAddress.address, platformFee);
 
-    await auction.updateMarketplace(marketplace.address);
     await nft.safeMint(minter.address, tokenUri, 10);
     await nft.safeMint(owner.address, tokenUri, 10);
     await nft.safeMint(minter.address, tokenUri, 10);

@@ -111,9 +111,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     /// @notice where to send platform fee funds to
     address payable public platformFeeRecipient;
 
-    /// @notice Address registry
-    address public marketplace;
-
     /// @notice for switching off auction creations, bids and withdrawals
     bool public isPaused;
 
@@ -131,14 +128,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
-    }
-
-    /**
-     @notice Update Marketplace contract
-     @dev Only admin
-     */
-    function updateMarketplace(address _marketplace) external onlyOwner {
-        marketplace = _marketplace;
     }
 
     /**
