@@ -21,7 +21,11 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
     event AuctionCreated(
         address indexed nftAddress,
-        uint256 indexed tokenId
+        uint256 indexed tokenId,
+        uint256 minimumBid,
+        uint256 reservePrice,
+        uint256 startTimestamp,
+        uint256 endTimestamp
     );
 
     event UpdateAuctionEndTime(
@@ -49,13 +53,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     event UpdateMinBidIncrement(uint256 minBidIncrement);
 
     event BidPlaced(
-        address indexed nftAddress,
-        uint256 indexed tokenId,
-        address indexed bidder,
-        uint256 bid
-    );
-
-    event BidWithdrawn(
         address indexed nftAddress,
         uint256 indexed tokenId,
         address indexed bidder,
@@ -102,7 +99,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     /// @notice ERC721 Address -> Token ID -> highest bidder info (if a bid has been received)
     mapping(address => mapping(uint256 => HighestBid)) public highestBids;
 
-    /// @notice globally and across all auctions, the amount by which a bid has to increase
+    /// @notice globally and across all auctions, the amount by which a bid has to increase in percentage
     uint256 public minBidIncrement = 1;
 
     /// @notice global platform fee, assumed to always be to 1 decimal place i.e. 25 = 2.5%
@@ -212,7 +209,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         // Ensure bid adheres to outbid increment and threshold
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
-        uint256 minBidRequired = highestBid.bid.add(minBidIncrement);
+        uint256 minBidRequired = highestBid.bid.add((highestBid.bid * minBidIncrement) / 100);
 
         require(_bidAmount >= minBidRequired, "failed to outbid highest bidder");
 
@@ -232,43 +229,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         highestBid.lastBidTime = _getNow();
 
         emit BidPlaced(_nftAddress, _tokenId, _msgSender(), _bidAmount);
-    }
-
-    /**
-     @notice Allows the hightest bidder to withdraw the bid (after 12 hours post auction's end)
-     @dev Only callable by the existing top bidder
-     @param _nftAddress ERC 721 Address
-     @param _tokenId Token ID of the item being auctioned
-     */
-    function withdrawBid(address _nftAddress, uint256 _tokenId)
-        external
-        nonReentrant
-        whenNotPaused
-    {
-        HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
-
-        // Ensure highest bidder is the caller
-        require(
-            highestBid.bidder == _msgSender(),
-            "you are not the highest bidder"
-        );
-
-        uint256 _endTime = auctions[_nftAddress][_tokenId].endTime;
-
-        require(
-            _getNow() < _endTime,
-            "can't withdraw if has ended"
-        );
-
-        uint256 previousBid = highestBid.bid;
-
-        // Clean up the existing top bid
-        delete highestBids[_nftAddress][_tokenId];
-
-        // Refund the top bidder
-        _refundHighestBidder(_nftAddress, _tokenId, payable(_msgSender()), previousBid);
-
-        emit BidWithdrawn(_nftAddress, _tokenId, _msgSender(), previousBid);
     }
 
     /**
@@ -650,7 +610,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             resulted: false
         });
 
-        emit AuctionCreated(_nftAddress, _tokenId);
+        emit AuctionCreated(_nftAddress, _tokenId, minimumBid, _reservePrice, _startTimestamp, _endTimestamp);
     }
 
     function _cancelAuction(address _nftAddress, uint256 _tokenId) private {

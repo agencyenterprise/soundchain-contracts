@@ -128,7 +128,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address _nftAddress,
         uint256 _tokenId,
         uint256 _newPrice
-    ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) { // TODO Add royalty
+    ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
         Listing storage listedItem = listings[_nftAddress][_tokenId][
             _msgSender()
         ];
