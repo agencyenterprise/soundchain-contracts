@@ -7,8 +7,6 @@ import {
   Soundchain721__factory,
   SoundchainAuctionMock,
   SoundchainAuctionMock__factory,
-  SoundchainMarketplace,
-  SoundchainMarketplace__factory,
 } from "../typechain-types";
 
 describe("auction", () => {
@@ -23,19 +21,10 @@ describe("auction", () => {
     buyer2: SignerWithAddress,
     nft: Soundchain721,
     feeAddress: SignerWithAddress,
-    auction: SoundchainAuctionMock,
-    marketplace: SoundchainMarketplace;
+    auction: SoundchainAuctionMock;
 
   beforeEach(async () => {
     [owner, minter, buyer, feeAddress, buyer2] = await ethers.getSigners();
-
-    const MarketplaceFactory: SoundchainMarketplace__factory =
-      await ethers.getContractFactory("SoundchainMarketplace");
-
-    marketplace = await MarketplaceFactory.deploy(
-      feeAddress.address,
-      platformFee
-    );
 
     const SoundchainCollectible: Soundchain721__factory =
       await ethers.getContractFactory("Soundchain721");
@@ -59,7 +48,7 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, firstTokenId, "1", "13", true, "10")
+            .createAuction(nft.address, firstTokenId, "1", "13", "10")
         ).to.be.revertedWith(
           "end time must be greater than start (by 5 minutes)"
         );
@@ -70,7 +59,7 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, firstTokenId, "1", "1", true, "4000")
+            .createAuction(nft.address, firstTokenId, "1", "1", "4000")
         ).to.be.revertedWith("invalid start time");
       });
 
@@ -82,7 +71,6 @@ describe("auction", () => {
             firstTokenId,
             "1",
             "10000000000000",
-            true,
             "100000000000000"
           );
 
@@ -94,7 +82,6 @@ describe("auction", () => {
               firstTokenId,
               "1",
               "10000000000000",
-              true,
               "100000000000000"
             )
         ).to.be.revertedWith("auction already started");
@@ -106,7 +93,7 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, "99", "1", "1", true, "400")
+            .createAuction(nft.address, "99", "1", "1", "400")
         ).to.be.revertedWith("ERC721: owner query for nonexistent token");
       });
 
@@ -116,7 +103,7 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, firstTokenId, "1", "0", true, "400")
+            .createAuction(nft.address, firstTokenId, "1", "0", "400")
         ).to.be.revertedWith("contract paused");
       });
 
@@ -128,14 +115,13 @@ describe("auction", () => {
             firstTokenId,
             "1",
             "10000000000000",
-            true,
             "100000000000000"
           );
 
         expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, secondTokenId, "1", "1", true, "3")
+            .createAuction(nft.address, secondTokenId, "1", "1", "3")
         ).to.be.revertedWith("not owner and or contract not approved");
       });
     });
@@ -149,7 +135,6 @@ describe("auction", () => {
             firstTokenId,
             "1",
             "10000000000000",
-            true,
             "100000000000000"
           );
 
@@ -169,7 +154,6 @@ describe("auction", () => {
           firstTokenId,
           "1", // reserve
           "3", // start
-          true,
           "400" // end
         );
       });
@@ -228,7 +212,6 @@ describe("auction", () => {
           firstTokenId,
           "1", // reserve
           "2", // start
-          true,
           "400" // end
         );
       });
@@ -346,66 +329,6 @@ describe("auction", () => {
         expect(newBidder).to.equal(buyer2.address);
       });
     });
-
-    describe("withdraw bid", async () => {
-      beforeEach(async () => {
-        await auction.setNowOverride("1");
-        await auction.connect(minter).createAuction(
-          nft.address,
-          firstTokenId,
-          "1", // reserve
-          "2", // start
-          true,
-          "400" // end
-        );
-        await auction.setNowOverride("3");
-        await auction
-          .connect(buyer)
-          .placeBid(nft.address, firstTokenId, { value: 200000000000000000n });
-      });
-
-      it("reverts with withdrawing a bid which does not exist", async () => {
-        await expect(
-          auction.connect(buyer2).withdrawBid(nft.address, 999)
-        ).to.be.revertedWith("you are not the highest bidder");
-      });
-
-      it("reverts with withdrawing a bid which you did not make", async () => {
-        await expect(
-          auction.connect(buyer2).withdrawBid(nft.address, firstTokenId)
-        ).to.be.revertedWith("you are not the highest bidder");
-      });
-
-      it("reverts when the contract is paused", async () => {
-        const { _bidder: originalBidder, _bid: originalBid } =
-          await auction.getHighestBidder(nft.address, firstTokenId);
-        expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
-        expect(originalBidder).to.equal(buyer.address);
-
-        await auction.toggleIsPaused();
-        await expect(
-          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
-        ).to.be.revertedWith("contract paused");
-      });
-
-      it("successfully withdraw the bid", async () => {
-        const { _bidder: originalBidder, _bid: originalBid } =
-          await auction.getHighestBidder(nft.address, firstTokenId);
-        expect(originalBid).to.be.equal(BigNumber.from(200000000000000000n));
-        expect(originalBidder).to.equal(buyer.address);
-
-        await expect(() =>
-          auction.connect(buyer).withdrawBid(nft.address, firstTokenId)
-        ).to.changeEtherBalances([buyer], [200000000000000000n]);
-
-        const { _bidder, _bid } = await auction.getHighestBidder(
-          nft.address,
-          firstTokenId
-        );
-        expect(_bid).to.be.equal(BigNumber.from(0));
-        expect(_bidder).to.equal("0x0000000000000000000000000000000000000000");
-      });
-    });
   });
 
   describe("result auction", async () => {
@@ -415,7 +338,7 @@ describe("auction", () => {
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
-          .createAuction(nft.address, firstTokenId, "2", "3", true, "400");
+          .createAuction(nft.address, firstTokenId, "2", "3", "400");
       });
 
       it("reverts if it's not the owner", async () => {
@@ -478,7 +401,7 @@ describe("auction", () => {
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
-          .createAuction(nft.address, firstTokenId, "1", "3", true, "400");
+          .createAuction(nft.address, firstTokenId, "1", "3", "400");
         await auction.setNowOverride("4");
       });
 
@@ -552,7 +475,7 @@ describe("auction", () => {
       await auction.setNowOverride("2");
       await auction
         .connect(minter)
-        .createAuction(nft.address, firstTokenId, "1", "3", true, "400");
+        .createAuction(nft.address, firstTokenId, "1", "3", "400");
       await auction.setNowOverride("3");
     });
 
@@ -642,7 +565,6 @@ describe("auction", () => {
         firstTokenId, // ID
         "1", // reserve
         "3", // start
-        true,
         "400" // end
       );
       await auction.setNowOverride("4");
@@ -677,7 +599,6 @@ describe("auction", () => {
         firstTokenId, // ID
         "1", // reserve
         "5", // start
-        true,
         "401" // end
       );
 

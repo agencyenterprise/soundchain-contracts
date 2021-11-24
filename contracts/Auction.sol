@@ -22,7 +22,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     event AuctionCreated(
         address indexed nftAddress,
         uint256 indexed tokenId,
-        uint256 minimumBid,
+        address owner,
         uint256 reservePrice,
         uint256 startTimestamp,
         uint256 endTimestamp
@@ -79,7 +79,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     /// @notice Parameters of an auction
     struct Auction {
         address owner;
-        uint256 minBid;
         uint256 reservePrice;
         uint256 startTime;
         uint256 endTime;
@@ -143,7 +142,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         uint256 _reservePrice,
         uint256 _startTimestamp,
-        bool minBidReserve,
         uint256 _endTimestamp
     ) external whenNotPaused {
         // Ensure this contract is approved to move the token
@@ -161,7 +159,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             _tokenId,
             _reservePrice,
             _startTimestamp,
-            minBidReserve,
             _endTimestamp
         );
     }
@@ -200,12 +197,11 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     ) internal whenNotPaused {
         Auction storage auction = auctions[_nftAddress][_tokenId];
 
-        if (auction.minBid == auction.reservePrice) {
-            require(
-                _bidAmount >= auction.reservePrice,
-                "bid cannot be lower than reserve price"
-            );
-        }
+        require(
+            _bidAmount >= auction.reservePrice,
+            "bid cannot be lower than reserve price"
+        );
+
 
         // Ensure bid adheres to outbid increment and threshold
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
@@ -532,8 +528,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             uint256 _reservePrice,
             uint256 _startTime,
             uint256 _endTime,
-            bool _resulted,
-            uint256 minBid
+            bool _resulted
         )
     {
         Auction storage auction = auctions[_nftAddress][_tokenId];
@@ -542,8 +537,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             auction.reservePrice,
             auction.startTime,
             auction.endTime,
-            auction.resulted,
-            auction.minBid
+            auction.resulted
         );
     }
 
@@ -577,7 +571,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         uint256 _reservePrice,
         uint256 _startTimestamp,
-        bool minBidReserve,
         uint256 _endTimestamp
     ) private {
         // Ensure a token cannot be re-listed if previously successfully sold
@@ -594,23 +587,16 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         require(_startTimestamp > _getNow(), "invalid start time");
 
-        uint256 minimumBid = 0;
-
-        if (minBidReserve) {
-            minimumBid = _reservePrice;
-        }
-
         // Setup the auction
         auctions[_nftAddress][_tokenId] = Auction({
             owner: _msgSender(),
-            minBid: minimumBid,
             reservePrice: _reservePrice,
             startTime: _startTimestamp,
             endTime: _endTimestamp,
             resulted: false
         });
 
-        emit AuctionCreated(_nftAddress, _tokenId, minimumBid, _reservePrice, _startTimestamp, _endTimestamp);
+        emit AuctionCreated(_nftAddress, _tokenId, _msgSender(), _reservePrice, _startTimestamp, _endTimestamp);
     }
 
     function _cancelAuction(address _nftAddress, uint256 _tokenId) private {
