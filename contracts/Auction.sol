@@ -97,7 +97,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     /// @notice where to send platform fee funds to
     address payable public platformFeeRecipient;
 
-    /// @notice for switching off auction creations, bids and withdrawals
+    /// @notice for switching off auction creations and bids
     bool public isPaused;
 
     modifier whenNotPaused() {
@@ -105,7 +105,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         _;
     }
 
-    /// @notice Contract constructor
     constructor(address payable _platformFeeRecipient, uint16 _platformFee) {
         require(
             _platformFeeRecipient != address(0),
@@ -134,7 +133,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 _startTimestamp,
         uint256 _endTimestamp
     ) external whenNotPaused {
-        // Ensure this contract is approved to move the token
         require(
             IERC721(_nftAddress).ownerOf(_tokenId) == _msgSender() &&
                 IERC721(_nftAddress).isApprovedForAll(
@@ -168,10 +166,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     {
         // require(_msgSender().isContract() == false, "no contracts permitted");
 
-        // Check the auction to see if this is a valid bid
         Auction memory auction = auctions[_nftAddress][_tokenId];
 
-        // Ensure auction is in flight
         require(
             _getNow() >= auction.startTime && _getNow() <= auction.endTime,
             "bidding outside of the auction window"
@@ -193,13 +189,11 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         );
 
 
-        // Ensure bid adheres to outbid increment and threshold
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
         uint256 minBidRequired = highestBid.bid.add((highestBid.bid * minBidIncrement) / 100);
 
         require(_bidAmount >= minBidRequired, "failed to outbid highest bidder");
 
-        // Refund existing top bidder if found
         if (highestBid.bidder != address(0)) {
             _refundHighestBidder(
                 _nftAddress,
@@ -209,7 +203,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             );
         }
 
-        // assign top bidder and bid time
         highestBid.bidder = payable(_msgSender());
         highestBid.bid = _bidAmount;
         highestBid.lastBidTime = _getNow();
@@ -228,7 +221,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         external
         nonReentrant
     {
-        // Check the auction to see if it can be resulted
         Auction storage auction = auctions[_nftAddress][_tokenId];
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
         address winner = highestBid.bidder;
@@ -240,32 +232,25 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             "sender must be item owner or winner"
         );
 
-        // Check the auction real
         require(auction.endTime > 0, "no auction exists");
 
-        // Check the auction has ended
         require(_getNow() > auction.endTime, "auction not ended");
 
-        // Ensure auction not already resulted
         require(!auction.resulted, "auction already resulted");
 
-        // Ensure there is a winner
         require(winner != address(0), "no open bids");
         require(
             winningBid >= auction.reservePrice,
             "highest bid is below reservePrice"
         );
 
-        // Ensure this contract is approved to move the token
         require(
             IERC721(_nftAddress).isApprovedForAll(auction.owner, address(this)),
             "auction not approved"
         );
 
-        // Result the auction
         auction.resulted = true;
 
-        // Clean up the highest bid
         delete highestBids[_nftAddress][_tokenId];
 
         uint256 payAmount;
@@ -313,7 +298,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             );
         }
 
-        // Transfer the token to the winner
         IERC721(_nftAddress).safeTransferFrom(
             IERC721(_nftAddress).ownerOf(_tokenId),
             winner,
@@ -328,7 +312,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             winningBid
         );
 
-        // Remove auction
         delete auctions[_nftAddress][_tokenId];
     }
 
@@ -342,7 +325,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         external
         nonReentrant
     {
-        // Check valid and not resulted
         Auction memory auction = auctions[_nftAddress][_tokenId];
 
         require(
@@ -350,12 +332,12 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
                 _msgSender() == auction.owner,
             "sender must be owner"
         );
-        // Check auction is real
         require(auction.endTime > 0, "no auction exists");
-        // Check auction not already resulted
         require(!auction.resulted, "auction already resulted");
+        require(highestBids[_nftAddress][_tokenId].bid == 0, "can not cancel if auction has a bid already");
 
-        _cancelAuction(_nftAddress, _tokenId);
+        delete auctions[_nftAddress][_tokenId];
+        emit AuctionCancelled(_nftAddress, _tokenId);
     }
 
     /**
@@ -501,13 +483,11 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 _startTimestamp,
         uint256 _endTimestamp
     ) private {
-        // Ensure a token cannot be re-listed if previously successfully sold
         require(
             auctions[_nftAddress][_tokenId].endTime == 0,
             "auction already started"
         );
 
-        // Check end time not before start time and that end is in the future
         require(
             _endTimestamp >= _startTimestamp + 300,
             "end time must be greater than start (by 5 minutes)"
@@ -515,7 +495,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         require(_startTimestamp > _getNow(), "invalid start time");
 
-        // Setup the auction
         auctions[_nftAddress][_tokenId] = Auction({
             owner: _msgSender(),
             reservePrice: _reservePrice,
@@ -525,27 +504,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         });
 
         emit AuctionCreated(_nftAddress, _tokenId, _msgSender(), _reservePrice, _startTimestamp, _endTimestamp);
-    }
-
-    function _cancelAuction(address _nftAddress, uint256 _tokenId) private {
-        // refund existing top bidder if found
-        HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
-        if (highestBid.bidder != address(0)) {
-            _refundHighestBidder(
-                _nftAddress,
-                _tokenId,
-                highestBid.bidder,
-                highestBid.bid
-            );
-
-            // Clear up highest bid
-            delete highestBids[_nftAddress][_tokenId];
-        }
-
-        // Remove auction and top bidder
-        delete auctions[_nftAddress][_tokenId];
-
-        emit AuctionCancelled(_nftAddress, _tokenId);
     }
 
     /**
