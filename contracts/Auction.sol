@@ -164,7 +164,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         nonReentrant
         whenNotPaused
     {
-        // require(_msgSender().isContract() == false, "no contracts permitted");
+        require(Address.isContract(_msgSender()) == false, "no contracts permitted");
 
         Auction memory auction = auctions[_nftAddress][_tokenId];
 
