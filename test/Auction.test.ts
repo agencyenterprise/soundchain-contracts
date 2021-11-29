@@ -471,7 +471,6 @@ describe("auction", () => {
       it("cancel clears down auctions and top bidder", async () => {
         await auction.connect(minter).cancelAuction(nft.address, firstTokenId);
 
-        // Check auction cleaned up
         const { _reservePrice, _startTime, _endTime, _resulted } =
           await auction.getAuction(nft.address, firstTokenId);
         expect(_reservePrice).to.be.equal("0");
@@ -479,7 +478,6 @@ describe("auction", () => {
         expect(_endTime).to.be.equal("0");
         expect(_resulted).to.be.equal(false);
 
-        // Check auction cleaned up
         const { _bidder, _bid } = await auction.getHighestBidder(
           nft.address,
           firstTokenId
