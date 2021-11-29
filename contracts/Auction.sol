@@ -28,22 +28,12 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 endTimestamp
     );
 
-    event UpdateAuctionEndTime(
+    event UpdateAuction(
         address indexed nftAddress,
         uint256 indexed tokenId,
+        uint256 reservePrice,
+        uint256 startTime,
         uint256 endTime
-    );
-
-    event UpdateAuctionStartTime(
-        address indexed nftAddress,
-        uint256 indexed tokenId,
-        uint256 startTime
-    );
-
-    event UpdateAuctionReservePrice(
-        address indexed nftAddress,
-        uint256 indexed tokenId,
-        uint256 reservePrice
     );
 
     event UpdatePlatformFee(uint256 platformFee);
@@ -391,102 +381,40 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     }
 
     /**
-     @notice Update the current reserve price for an auction
-     @dev Only admin
-     @dev Auction must exist
+     @notice Update the all params to auction
      @param _nftAddress ERC 721 Address
      @param _tokenId Token ID of the NFT being auctioned
      @param _reservePrice New Ether reserve price (WEI value)
+     @param _startTime New start time (unix epoch in seconds)
+     @param _endTime New end time (unix epoch in seconds)
      */
-    function updateAuctionReservePrice(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _reservePrice
-    ) external {
+    function updateAuction(address _nftAddress, uint256 _tokenId, uint256 _reservePrice, uint256 _startTime, uint256 _endTime) external {
         Auction storage auction = auctions[_nftAddress][_tokenId];
 
         require(_msgSender() == auction.owner, "sender must be item owner");
-
-        // Ensure auction not already resulted
         require(!auction.resulted, "auction already resulted");
-
         require(auction.endTime > 0, "no auction exists");
-
-        auction.reservePrice = _reservePrice;
-        emit UpdateAuctionReservePrice(
-            _nftAddress,
-            _tokenId,
-            _reservePrice
-        );
-    }
-
-    /**
-     @notice Update the current start time for an auction
-     @dev Only admin
-     @dev Auction must exist
-     @param _nftAddress ERC 721 Address
-     @param _tokenId Token ID of the NFT being auctioned
-     @param _startTime New start time (unix epoch in seconds)
-     */
-    function updateAuctionStartTime(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _startTime
-    ) external {
-        Auction storage auction = auctions[_nftAddress][_tokenId];
-
-        require(_msgSender() == auction.owner, "sender must be owner");
-
         require(_startTime > 0, "invalid start time");
-
         require(auction.startTime + 60 > _getNow(), "auction already started");
-
         require(
-            _startTime + 300 < auction.endTime,
+            _startTime + 300 < _endTime,
             "start time should be less than end time (by 5 minutes)"
         );
-
-        // Ensure auction not already resulted
-        require(!auction.resulted, "auction already resulted");
-
-        require(auction.endTime > 0, "no auction exists");
-
-        auction.startTime = _startTime;
-        emit UpdateAuctionStartTime(_nftAddress, _tokenId, _startTime);
-    }
-
-    /**
-     @notice Update the current end time for an auction
-     @dev Only admin
-     @dev Auction must exist
-     @param _nftAddress ERC 721 Address
-     @param _tokenId Token ID of the NFT being auctioned
-     @param _endTimestamp New end time (unix epoch in seconds)
-     */
-    function updateAuctionEndTime(
-        address _nftAddress,
-        uint256 _tokenId,
-        uint256 _endTimestamp
-    ) external {
-        Auction storage auction = auctions[_nftAddress][_tokenId];
-
-        require(_msgSender() == auction.owner, "sender must be owner");
-
-        // Check the auction has not ended
-        require(_getNow() < auction.endTime, "auction already ended");
-
-        require(auction.endTime > 0, "no auction exists");
         require(
-            auction.startTime < _endTimestamp,
+            _startTime < _endTime,
             "end time must be greater than start"
         );
         require(
-            _endTimestamp > _getNow() + 300,
+            _endTime > _getNow() + 300,
             "auction should end after 5 minutes"
         );
+        require(highestBids[_nftAddress][_tokenId].bid == 0, "can not update if auction has a bid already");
 
-        auction.endTime = _endTimestamp;
-        emit UpdateAuctionEndTime(_nftAddress, _tokenId, _endTimestamp);
+        auction.endTime = _endTime;
+        auction.reservePrice = _reservePrice;
+        auction.startTime = _startTime;
+
+        emit UpdateAuction(_nftAddress, _tokenId, _reservePrice, _startTime, _endTime);
     }
 
     /**

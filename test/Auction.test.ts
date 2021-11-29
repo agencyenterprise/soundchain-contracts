@@ -334,7 +334,6 @@ describe("auction", () => {
   describe("result auction", async () => {
     describe("validation", () => {
       beforeEach(async () => {
-        await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
@@ -358,22 +357,7 @@ describe("auction", () => {
         ).to.be.revertedWith("auction not ended");
       });
 
-      // it("cannot result if the auction is reserve not reached", async () => {
-      //   await auction.setNowOverride("4");
-      //   await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
-      //     value: 1n,
-      //   });
-      //   await auction.setNowOverride("40000");
-      //   await expect(
-      //     auction.connect(minter).resultAuction(nft.address, firstTokenId)
-      //   ).to.be.revertedWith("reserve not reached");
-      // });
-
       it("reverts if the auction has no winner", async () => {
-        // Lower reserve to zero
-        await auction
-          .connect(minter)
-          .updateAuctionReservePrice(nft.address, firstTokenId, "0");
         await auction.setNowOverride("40000");
         await expect(
           auction.connect(minter).resultAuction(nft.address, firstTokenId)
@@ -397,7 +381,6 @@ describe("auction", () => {
 
     describe("successfully resulting an auction", async () => {
       beforeEach(async () => {
-        await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
@@ -445,33 +428,11 @@ describe("auction", () => {
           [3900000000001n, 99999999999n]
         );
       });
-
-      // it("transfer funds to the token to only the creator when reserve meet directly", async () => {
-      //   await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
-      //     value: 1000000000000n,
-      //   });
-      //   await auction.setNowOverride("40000");
-
-      //   // const platformFeeTracker = await balance.tracker(platformFeeAddress);
-      //   // const minterTracker = await balance.tracker(minter);
-
-      //   // Result it successfully
-      //   await auction.connect(minter).resultAuction(nft.address, firstTokenId);
-
-      //   // Platform gets 12%
-      //   // const platformChanges = await platformFeeTracker.delta("wei");
-      //   // expect(platformChanges).to.be.bignumber.equal("0");
-
-      //   // Remaining funds sent to designer on completion
-      //   // const changes = await minterTracker.delta("wei");
-      //   // expect(changes).to.be.bignumber.greaterThan(ether("0"));
-      // });
     });
   });
 
   describe("cancel auction", async () => {
     beforeEach(async () => {
-      await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
       await auction.setNowOverride("2");
       await auction
         .connect(minter)
@@ -556,9 +517,47 @@ describe("auction", () => {
     });
   });
 
+  describe("update auction", async () => {
+    beforeEach(async () => {
+      await auction.setNowOverride("2");
+      await auction.connect(minter).createAuction(
+        nft.address,
+        firstTokenId, // ID
+        "1", // reserve
+        "3", // start
+        "400" // end
+      );
+      await auction.setNowOverride("4");
+    });
+
+    it("reverts if there is a bid already", async () => {
+      await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+        value: 200000000n,
+      });
+
+      await expect(
+        auction
+          .connect(minter)
+          .updateAuction(nft.address, firstTokenId, "2", "3000", "300000")
+      ).to.be.revertedWith("can not update if auction has a bid already");
+    });
+
+    it("successfully update auction", async () => {
+      await auction
+        .connect(minter)
+        .updateAuction(nft.address, firstTokenId, "2", "3000", "300000");
+
+      const { _reservePrice, _startTime, _endTime, _resulted } =
+        await auction.getAuction(nft.address, firstTokenId);
+      expect(_reservePrice).to.be.equal("2");
+      expect(_startTime).to.be.equal("3000");
+      expect(_endTime).to.be.equal("300000");
+      expect(_resulted).to.be.equal(false);
+    });
+  });
+
   describe("create, cancel and re-create an auction", async () => {
     beforeEach(async () => {
-      await nft.connect(minter).safeMint(minter.address, tokenUri, 10);
       await auction.setNowOverride("2");
       await auction.connect(minter).createAuction(
         nft.address,
