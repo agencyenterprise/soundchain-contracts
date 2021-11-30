@@ -110,20 +110,27 @@ describe("marketplace", () => {
 
     it("reverts when item is not listed", async () => {
       await expect(
-        marketplace.updateListing(nft.address, secondTokenId, newPrice)
+        marketplace.updateListing(nft.address, secondTokenId, newPrice, "100")
       ).to.be.revertedWith("not listed item");
     });
 
     it("reverts when not owning the item", async () => {
       await expect(
-        marketplace.updateListing(nft.address, firstTokenId, newPrice)
+        marketplace.updateListing(nft.address, firstTokenId, newPrice, "100")
       ).to.be.revertedWith("not listed item"); // TODO: investigate if there is another way to have the mapping without the owner, here should be not owning item
     });
 
     it("successfully update the item", async () => {
       await marketplace
         .connect(safeMinter)
-        .updateListing(nft.address, firstTokenId, newPrice);
+        .updateListing(nft.address, firstTokenId, newPrice, "100");
+      const { pricePerItem, startingTime } = await marketplace.listings(
+        nft.address,
+        firstTokenId,
+        safeMinter.address
+      );
+      expect(pricePerItem).to.be.eq(newPrice);
+      expect(startingTime).to.be.eq("100");
     });
   });
 

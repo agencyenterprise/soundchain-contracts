@@ -36,7 +36,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address indexed owner,
         address indexed nft,
         uint256 tokenId,
-        uint256 newPrice
+        uint256 newPrice,
+        uint256 startingTime
     );
     event ItemCanceled(
         address indexed owner,
@@ -124,10 +125,12 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     /// @param _nftAddress Address of NFT contract
     /// @param _tokenId Token ID of NFT
     /// @param _newPrice New sale price for each iteam
+    /// @param _startingTime scheduling for a future sale
     function updateListing(
         address _nftAddress,
         uint256 _tokenId,
-        uint256 _newPrice
+        uint256 _newPrice,
+        uint256 _startingTime
     ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
         Listing storage listedItem = listings[_nftAddress][_tokenId][
             _msgSender()
@@ -140,11 +143,13 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         }
 
         listedItem.pricePerItem = _newPrice;
+        listedItem.startingTime = _startingTime;
         emit ItemUpdated(
             _msgSender(),
             _nftAddress,
             _tokenId,
-            _newPrice
+            _newPrice,
+            _startingTime
         );
     }
 
