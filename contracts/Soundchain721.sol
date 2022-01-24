@@ -27,7 +27,7 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
         setRoyalty(tokenId, to, _royaltyPercentage);
     }
 
-    function setRoyalty(uint256 tokenId, address creator, uint8 _royaltyPercentage) public {
+    function setRoyalty(uint256 tokenId, address creator, uint8 _royaltyPercentage) private {
         royaltyReceivers[tokenId] = creator;
         royaltyPercentage[tokenId] = _royaltyPercentage;
     }
