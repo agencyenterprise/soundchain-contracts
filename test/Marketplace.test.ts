@@ -11,7 +11,7 @@ import {
 describe("marketplace", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
-  const platformFee = "25"; // marketplace platform fee: 2.5%
+  const platformFee = "195"; // marketplace platform fee: 1.95%
   const pricePerItem = "1000000000000000000";
   const newPrice = "500000000000000000";
   const tokenUri = "ipfs";
@@ -190,7 +190,7 @@ describe("marketplace", () => {
           })
       ).to.changeEtherBalances(
         [feeAddress, safeMinter],
-        [25000000000000000n, 975000000000000000n]
+        [19500000000000000n, 980500000000000000n]
       );
 
       expect(await nft.ownerOf(firstTokenId)).to.be.equal(buyer.address);
@@ -201,14 +201,6 @@ describe("marketplace", () => {
     beforeEach(async () => {
       nft.connect(safeMinter).setApprovalForAll(marketplace.address, true);
     });
-
-    // it("successfully set royalties on map", async () => {
-    //   await marketplace
-    //     .connect(safeMinter)
-    //     .listItem(nft.address, "2", "1", pricePerItem, "0", "100");
-
-    //   expect(await marketplace.royalties(nft.address, "2")).to.be.eq(100);
-    // });
 
     it("successfully transfer royalties", async () => {
       await nft
@@ -235,7 +227,7 @@ describe("marketplace", () => {
         })
       ).to.changeEtherBalances(
         [feeAddress, buyer, safeMinter],
-        [25000000000000000n, 877500000000000000n, 97500000000000000n]
+        [19500000000000000n, 882450000000000000n, 98050000000000000n]
       );
     });
   });

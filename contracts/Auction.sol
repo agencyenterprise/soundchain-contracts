@@ -92,7 +92,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     uint256 public minBidIncrement = 1;
 
     /// @notice global platform fee, assumed to always be to 1 decimal place i.e. 25 = 2.5%
-    uint256 public platformFee = 25;
+    uint256 public platformFee;
 
     /// @notice where to send platform fee funds to
     address payable public platformFeeRecipient;
@@ -240,7 +240,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         require(winner != address(0), "no open bids");
         require(
-            winningBid >= auction.reservePrice,
+            winningBid > auction.reservePrice,
             "highest bid is below reservePrice"
         );
 
@@ -256,13 +256,9 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 payAmount;
 
         if (winningBid > auction.reservePrice) {
-            // Work out total above the reserve
-            uint256 aboveReservePrice = winningBid.sub(auction.reservePrice);
-
-            // Work out platform fee from above reserve amount
-            uint256 platformFeeAboveReserve = aboveReservePrice
+            uint256 platformFeeAboveReserve = winningBid
                 .mul(platformFee)
-                .div(1000);
+                .div(1e4);
 
             // Send platform fee
             (bool platformTransferSuccess, ) = platformFeeRecipient.call{

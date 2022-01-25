@@ -38,7 +38,7 @@ const config: HardhatUserConfig = {
       gasPrice: 8000000000,
     },
     polygon: {
-      url: "",
+      url: "https://polygon-mainnet.g.alchemy.com/v2/JRptRNLZzr65CeN9PyapuBIFbFMu7CtM",
       accounts: [`0x${PRIVATE_KEY}`],
     },
   },

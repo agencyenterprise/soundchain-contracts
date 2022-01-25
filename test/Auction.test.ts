@@ -12,7 +12,7 @@ import {
 describe("auction", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
-  const platformFee = "25"; // marketplace platform fee: 2.5%
+  const platformFee = "195"; // auction platform fee: 1.95%
   const tokenUri = "ipfs";
 
   let owner: SignerWithAddress,
@@ -403,7 +403,7 @@ describe("auction", () => {
 
       it("transfer funds to the token creator and platform", async () => {
         await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
-          value: 4000000000000n,
+          value: 1000000000000000000n,
         });
         await auction.setNowOverride("40000");
 
@@ -411,13 +411,13 @@ describe("auction", () => {
           auction.connect(minter).resultAuction(nft.address, firstTokenId)
         ).to.changeEtherBalances(
           [minter, feeAddress],
-          [3900000000001n, 99999999999n]
+          [980500000000000000n, 19500000000000000n]
         );
       });
 
       it("buyer can result the auction", async () => {
         await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
-          value: 4000000000000n,
+          value: 1000000000000000000n,
         });
         await auction.setNowOverride("40000");
 
@@ -425,7 +425,7 @@ describe("auction", () => {
           auction.connect(buyer).resultAuction(nft.address, firstTokenId)
         ).to.changeEtherBalances(
           [minter, feeAddress],
-          [3900000000001n, 99999999999n]
+          [980500000000000000n, 19500000000000000n]
         );
       });
     });
@@ -578,6 +578,61 @@ describe("auction", () => {
       await auction.setNowOverride("4000");
 
       await auction.connect(minter).resultAuction(nft.address, firstTokenId);
+    });
+  });
+
+  describe("royalties", () => {
+    beforeEach(async () => {
+      nft.connect(minter).setApprovalForAll(auction.address, true);
+    });
+
+    it("successfully transfer royalties", async () => {
+      await nft
+        .connect(minter)
+        .setApprovalForAll(auction.address, true);
+      await nft.connect(buyer).setApprovalForAll(auction.address, true);
+
+      await auction.setNowOverride("2");
+      await auction.connect(minter).createAuction(
+        nft.address,
+        firstTokenId, // ID
+        "1", // reserve
+        "3", // start
+        "400" // end
+      );
+      await auction.setNowOverride("4");
+
+      await auction.connect(buyer).placeBid(nft.address, firstTokenId, {
+        value: 200000000n,
+      });
+
+      await auction.setNowOverride("4000");
+
+      await auction.connect(buyer).resultAuction(nft.address, firstTokenId)
+
+
+      await auction.setNowOverride("2");
+      await auction.connect(buyer).createAuction(
+        nft.address,
+        firstTokenId, // ID
+        "1", // reserve
+        "3", // start
+        "400" // end
+      );
+      await auction.setNowOverride("4");
+
+      await auction.connect(buyer2).placeBid(nft.address, firstTokenId, {
+        value: 1000000000000000000n,
+      });
+
+      await auction.setNowOverride("4000");
+
+      await expect(() =>
+        auction.connect(buyer2).resultAuction(nft.address, firstTokenId)
+      ).to.changeEtherBalances(
+        [feeAddress, buyer, minter],
+        [19500000000000000n, 882450000000000000n, 98050000000000000n]
+      );
     });
   });
 });

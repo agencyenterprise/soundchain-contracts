@@ -185,7 +185,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
 
         uint256 price = listedItem.pricePerItem.mul(listedItem.quantity);
-        uint256 feeAmount = price.mul(platformFee).div(1e3);
+        uint256 feeAmount = price.mul(platformFee).div(1e4);
 
         (bool feeTransferSuccess, ) = feeRecipient.call{value: feeAmount}(
             ""
