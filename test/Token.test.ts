@@ -13,7 +13,7 @@ describe("OGUN", () => {
 
     beforeEach(async () => {
       [owner, newWallet] = await ethers.getSigners();
-      const OGUN = await ethers.getContractFactory("OGUNToken20");
+      const OGUN = await ethers.getContractFactory("SoundchainOGUN20");
       token = await OGUN.deploy();
 
     });
