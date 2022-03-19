@@ -13,25 +13,22 @@ contract StakingRewards {
 
     address public constant REWARDS_TOKEN = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant REWARDS_PHASE_ONE = 307692308 * OGUN_PRECISION_FACTOR;
-    uint256 public constant REWARDS_PHASE_TWO = 128205128 * OGUN_PRECISION_FACTOR; 
-    uint256 public constant REWARDS_PHASE_THREE = 480769231 * OGUN_PRECISION_FACTOR; 
-    uint256 public constant REWARDS_PHASE_FOUR = 383590836 * OGUN_PRECISION_FACTOR; 
+    uint256 public constant REWARDS_PHASE_ONE = 307692308;
+    uint256 public constant REWARDS_PHASE_TWO = 128205128; 
+    uint256 public constant REWARDS_PHASE_THREE = 480769231; 
+    uint256 public constant REWARDS_PHASE_FOUR = 383590836; 
     uint256 public constant PHASE_ONE_BLOCK = 195000; 
     uint256 public constant PHASE_TWO_BLOCK = 585000; 
     uint256 public constant PHASE_THREE_BLOCK = 1560000; 
     uint256 public constant PHASE_FOUR_BLOCK = 2346250; 
     
-    IERC20 public stakingToken;
+    IERC20 public immutable stakingToken;
 
     uint256 public lastUpdateBlockNumber;
     uint256 public immutable firstBlockNumber;
     uint256 private _totalRewardsSupply = 300000000;
     uint256 private _totalStaked;
     uint256 private _totalStakedTemp;
-
-
-    uint256 public test;
 
     mapping(address => uint256) public rewards;
 
@@ -46,14 +43,18 @@ contract StakingRewards {
         lastUpdateBlockNumber = block.number;
     }
 
-    function getBalanceOf(address account) public returns (uint256) {
-        _updateReward();
-        return _balances[account];
+    modifier isValidAccount(address account) {
+        require(_addressInserted[account], "address hasn't stake any tokens yet");
+        _;
     }
 
-    function addBlock() external {
-        console.log('Current Block number: ', block.number);
-        test += 1;
+    function getBalanceOf(address account) external isValidAccount(account) returns (uint256) {
+        // if (!_addressInserted[account]) return 0;
+        console.log('getBalanceOf Current Block number: ', block.number);
+        _updateReward();
+        emit RewardsCalculated(_totalStaked);
+        
+        return _balances[account];
     }
 
     function _calculateReward(address user) private {
@@ -71,25 +72,30 @@ contract StakingRewards {
         
         //check if last calculated phase + 1's rate is different than current's rate 
         if (currentRate != previousPhaseRate) {
-            console.log("Not new user:", userBalance);
+            // console.log("Not new user:", userBalance);
             previousBlocksToCalculate = previousRateLimit.sub(lastUpdateBlockNumber);
             previousCompound = _rewardPerBlock(userBalance, previousPhaseRate).mul(previousBlocksToCalculate); 
+
             blocksToCalculate = block.number.sub(previousRateLimit);
         } 
 
-        uint256 newBalance = _rewardPerBlock(userBalance + previousCompound, currentRate).mul(blocksToCalculate);
+        // uint256 newBalance = _rewardPerBlock(userBalance + previousCompound, currentRate).mul(blocksToCalculate);
+        uint256 newBalance = _rewardPerBlock(userBalance + previousCompound, currentRate);
+            console.log('****_rewardPerBlock****: ', newBalance);
+            newBalance = newBalance.mul(blocksToCalculate);
 
         console.log("Rate:", currentRate);
         console.log("blocksToCalculate:", blocksToCalculate);
         console.log("userBalance:", userBalance);
         console.log("New balance:", userBalance + newBalance);
-        _balances[user] += newBalance;
+        console.log("Phase:", phase);
+        _balances[user] = _balances[user].add(newBalance);
         _totalStakedTemp += newBalance;
         
     }
 
     function _rewardPerBlock(uint256 balance, uint256 rate) private view returns (uint256) {
-        return balance.div(_totalStaked).mul(rate);
+        return (balance.div(_totalStaked)).mul(rate).mul(OGUN_PRECISION_FACTOR);
     }
 
     function _getRewardPhaseRate(uint256 blockNumber) private pure returns (uint256 rate, uint256 phaseLimit) {
@@ -126,7 +132,7 @@ contract StakingRewards {
 
     function stake(uint256 _amount) external {
         require(_amount > 0, "Stake: Amount must be greater than 0");
-        console.log('Current Block number: ', block.number);
+        console.log('STAKE Current Block number: ', block.number);
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
         _totalStaked += _amount;
@@ -136,22 +142,23 @@ contract StakingRewards {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external {
+    function withdraw() external isValidAccount(msg.sender) {
         _updateReward();
         uint256 amount = _balances[msg.sender];
         if (amount == 0) return;
         _balances[msg.sender] = 0;
+        if (amount > _totalStaked) amount = _totalStaked;
         _totalStaked -= amount;
         stakingToken.safeTransfer(msg.sender, amount);
 
         emit Withdraw(msg.sender, amount);
     }
 
-    function setAddress(address _account) internal {
+    function setAddress(address account) internal {
 
-        if (!_addressInserted[_account]) {
-            _addressInserted[_account] = true;
-            _addresses.push(_account);
+        if (!_addressInserted[account]) {
+            _addressInserted[account] = true;
+            _addresses.push(account);
         }
     }
 
@@ -162,4 +169,6 @@ contract StakingRewards {
     event Stake(address indexed user, uint256 amount);
 
     event Withdraw(address indexed user, uint256 amount);
+
+    event RewardsCalculated(uint256 amount);
 }
