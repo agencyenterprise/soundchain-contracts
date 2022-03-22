@@ -8,18 +8,6 @@ import {
   StakingRewards__factory
 } from "../typechain-types";
 
-// Tests
-// Deploy stake contract
-// Transfer rewards supply
-// Stake from user1 1000000
-// check user 1 balance in stake contract
-// Stake from user2 300000
-// check user 1 balance in stake contract
-//  check gas
-// Stake from user1 100000
-// Withdraw from user1 
-// 
-
 describe("Staking", () => {
   let owner: SignerWithAddress,
     user1: SignerWithAddress, 
