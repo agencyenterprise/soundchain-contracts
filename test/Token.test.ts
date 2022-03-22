@@ -26,7 +26,7 @@ describe("OGUN", () => {
       });
     }); 
     describe("token transactions by owner", () => {
-      const transferAmount = ethers.utils.parseEther("1000000")
+      const transferAmount = ethers.utils.parseEther("1000000");
       const failedAmount = utils.parseEther("1000000001");
 
       it("sustracts token amount from senders balance", async function () {
