@@ -160,7 +160,6 @@ describe("Staking", () => {
           expect(ethers.utils.formatEther(balance)).to.eq('1000038.3590836');
         });
 
-
         it("should calculate all the blocks from phase 1 to phase 4 ", async function () {
           //+10 previous blocks from beforeEach function (This 10 blocks are 3076.92308 rewards that will not be apply)
           await stake.connect(user1).stake(transfer1m);
@@ -236,6 +235,23 @@ describe("Staking", () => {
         await stake.connect(user1).withdraw();
         const user1Balance = await token.balanceOf(user1.address);
         expect(ethers.utils.formatEther(user1Balance)).to.eq('1000307.692308');
+      });
+
+      it("after withdraw, should not calculate rewards for account without balance ", async function () {
+        //+10 previous blocks from beforeEach function (This 10 blocks are 3076.92308 rewards that will not be apply)
+        await stake.connect(user1).stake(transfer1m);
+        await network.provider.send('hardhat_mine', ['0x2f9ae']); // + 194,989 blocks 
+        await stake.connect(user2).stake(ethers.utils.parseEther("1")); // Forces to change _lastUpdatedBlockNumber state
+        await network.provider.send('hardhat_mine', ['0x8ed28']); // + 585,000 blocks 
+        await stake.connect(user2).stake(ethers.utils.parseEther("1"));
+        await stake.connect(user1).withdraw();
+        await stake.connect(user2).stake(transfer500k);
+        await network.provider.send('hardhat_mine', ['0x17cdc0']); // + 1,560,000 blocks 
+        await stake.connect(user2).stake(ethers.utils.parseEther("1"));
+        await network.provider.send('hardhat_mine', ['0x23cd0a']); // + 2,346,250 blocks 
+        const balanceUser1 = await stake.callStatic.getBalanceOf(user1.address); ;
+        const etherNumber = ethers.utils.formatEther(balanceUser1);
+        expect(etherNumber).to.eq('0.0');
       });
     });
 

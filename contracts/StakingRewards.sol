@@ -55,11 +55,14 @@ contract StakingRewards {
         if (_totalRewardsSupply <= 0) {
             return;
         }
+        uint256 userBalance = _balances[_user];
+        if (userBalance <= 0) {
+            return;
+        }
         uint256 phase = block.number - firstBlockNumber;
         uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
         (uint256 currentRate,) = _getRewardPhaseRate(phase);
         (uint256 previousPhaseRate, uint256 previousRateLimit) = _getRewardPhaseRate(_lastUpdatedBlockNumber - firstBlockNumber + 1);
-        uint256 userBalance = _balances[_user];
         uint256 previousPhaseRewards;
         uint256 previousBlocksToCalculate;
 
