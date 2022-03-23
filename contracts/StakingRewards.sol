@@ -11,7 +11,6 @@ contract StakingRewards {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
-    // address public constant REWARDS_TOKEN = 0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512;
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
     uint256 public constant REWARDS_PHASE_ONE = 307692308000000000000;
     uint256 public constant REWARDS_PHASE_TWO = 128205128000000000000; 
