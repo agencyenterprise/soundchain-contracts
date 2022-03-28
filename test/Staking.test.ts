@@ -4,8 +4,7 @@ import { expect } from "chai";
 import { ethers, network } from "hardhat";
 import {
   ERC20,
-  StakingRewards,
-  StakingRewards__factory
+  StakingRewards
 } from "../typechain-types";
 
 describe("Staking", () => {
@@ -24,8 +23,7 @@ describe("Staking", () => {
     beforeEach(async () => {
       [owner, user1, user2, user3, user4] = await ethers.getSigners();
       const tokenContract = await ethers.getContractFactory("SoundchainOGUN20");
-      const StakingContract: StakingRewards__factory =
-      await ethers.getContractFactory("StakingRewards");
+      const StakingContract = await ethers.getContractFactory("StakingRewards");
       token = await tokenContract.deploy();
       stake = await StakingContract.deploy(token.address, transfer300m);
 
@@ -47,27 +45,27 @@ describe("Staking", () => {
     describe("Stake calculation for different pahses with just 1 user", () => {
       it("reverts if address doesn't exist in balances", async function () {
         await expect(
-          stake.callStatic.getBalanceOf(user1.address)
+          stake.callStatic.getUpdatedBalanceOf(user1.address)
         ).to.be.revertedWith("address hasn't stake any tokens yet");
       });
       
       it("should no increace balance with rewards if there is no new blocks in network", async function () {
         await stake.connect(user1).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(balance).to.eq(transfer1m);
       });
 
       it("x1 - should increase balance of user 1 (by 307.692308 phase 1)", async function () {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1000307.692308');
       });
 
       it("x23 - should increase balance of user 1 (by 307.692308 x 23 phase 1)", async function () {
         await stake.connect(user1).stake(transfer1m);
         await network.provider.send('hardhat_mine', ['0x17']);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1007076.923084');
       });
 
@@ -75,7 +73,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0x2f9b8']);
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1000128.205128');
       });
 
@@ -83,7 +81,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0x2f9b8']);
         await stake.connect(user1).stake(transfer1m);
         await network.provider.send('hardhat_mine', ['0x157']);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1043974.358904');
       });
 
@@ -91,7 +89,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0xbe6e0']);
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1000048.0769231');
       });
       
@@ -99,7 +97,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0xbe6e0']);
         await stake.connect(user1).stake(transfer1m);
         await network.provider.send('hardhat_mine', ['0x47']);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1003413.4615401');
       });
 
@@ -107,7 +105,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0x23b4a0']);
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1000038.3590836');
       });
 
@@ -115,7 +113,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0x23b4a0']);
         await stake.connect(user1).stake(transfer1m);
         await network.provider.send('hardhat_mine', ['0x33']);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1001956.3132636');
       });
 
@@ -126,7 +124,7 @@ describe("Staking", () => {
           await stake.connect(user1).stake(transfer1m);// block 194,999
           await network.provider.send("evm_mine");// + block 195,000
           await network.provider.send("evm_mine");// + 1 block
-          const balance = await stake.callStatic.getBalanceOf(user1.address); // callStatic doesn't create blocks 
+          const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address); // callStatic doesn't create blocks 
           expect(ethers.utils.formatEther(balance)).to.eq('1000435.897436');
         });
   
@@ -136,7 +134,7 @@ describe("Staking", () => {
           await stake.connect(user1).stake(transfer1m);// + 1 block 
           await network.provider.send("evm_mine");// + 1 block 
           await network.provider.send("evm_mine");// + 1 block
-          const balance = await stake.callStatic.getBalanceOf(user1.address); // callStatic doesn't create blocks 
+          const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address); // callStatic doesn't create blocks 
           expect(ethers.utils.formatEther(balance)).to.eq('1000176.2820511');
         });
   
@@ -146,7 +144,7 @@ describe("Staking", () => {
           await stake.connect(user1).stake(transfer1m);// + 1 block 
           await network.provider.send("evm_mine");// + 1 block 
           await network.provider.send("evm_mine");// + 1 block
-          const balance = await stake.callStatic.getBalanceOf(user1.address); // callStatic doesn't create blocks 
+          const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address); // callStatic doesn't create blocks 
           expect(ethers.utils.formatEther(balance)).to.eq('1000086.4360067');
         });
 
@@ -156,7 +154,7 @@ describe("Staking", () => {
           await stake.connect(user1).stake(transfer1m);// + 1 block 
           await network.provider.send("evm_mine");// + 1 block 
           await network.provider.send('hardhat_mine', ['0x21']); // + 33 blocks
-          const balance = await stake.callStatic.getBalanceOf(user1.address); // callStatic doesn't create blocks 
+          const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address); // callStatic doesn't create blocks 
           expect(ethers.utils.formatEther(balance)).to.eq('1000038.3590836');
         });
 
@@ -170,7 +168,7 @@ describe("Staking", () => {
           await network.provider.send('hardhat_mine', ['0x17cdc0']); // + 1,560,000 blocks 
           await stake.connect(user2).stake(ethers.utils.parseEther("1"));
           await network.provider.send('hardhat_mine', ['0x23cd0a']); // + 2,346,250 blocks 
-          const balance = await stake.callStatic.getBalanceOf(user1.address); 
+          const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address); 
           const etherNumber = ethers.utils.formatEther(balance);
           expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('300996917.374868');
         });
@@ -182,7 +180,7 @@ describe("Staking", () => {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer500k); 
         await stake.connect(user3).stake(transfer500k);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);  
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);  
         const etherNumber = ethers.utils.formatEther(balance);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('1000512.841548');
       });
@@ -191,7 +189,7 @@ describe("Staking", () => {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer500k);
         await stake.connect(user3).stake(transfer500k);
-        const balance = await stake.callStatic.getBalanceOf(user2.address); 
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user2.address); 
         const etherNumber = ethers.utils.formatEther(balance);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('500102.543068');
       });
@@ -203,7 +201,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer500k); 
         await stake.connect(user3).stake(transfer500k);
         await stake.connect(user4).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user1.address);  
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);  
         const etherNumber = ethers.utils.formatEther(balance);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('1000666.719254');
       });
@@ -213,7 +211,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer500k);
         await stake.connect(user3).stake(transfer500k);
         await stake.connect(user4).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user2.address); 
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user2.address); 
         const etherNumber = ethers.utils.formatEther(balance);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('500179.458255');
       });
@@ -223,7 +221,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer500k);
         await stake.connect(user3).stake(transfer500k);
         await stake.connect(user4).stake(transfer1m);
-        const balance = await stake.callStatic.getBalanceOf(user3.address); 
+        const balance = await stake.callStatic.getUpdatedBalanceOf(user3.address); 
         const etherNumber = ethers.utils.formatEther(balance);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('500076.899416');
       });
@@ -249,7 +247,7 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0x17cdc0']); // + 1,560,000 blocks 
         await stake.connect(user2).stake(ethers.utils.parseEther("1"));
         await network.provider.send('hardhat_mine', ['0x23cd0a']); // + 2,346,250 blocks 
-        const balanceUser1 = await stake.callStatic.getBalanceOf(user1.address); ;
+        const balanceUser1 = await stake.callStatic.getUpdatedBalanceOf(user1.address); ;
         const etherNumber = ethers.utils.formatEther(balanceUser1);
         expect(etherNumber).to.eq('0.0');
       });

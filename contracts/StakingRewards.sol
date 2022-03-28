@@ -45,8 +45,12 @@ contract StakingRewards {
         _;
     }
 
-    function getBalanceOf(address _account) external isValidAccount(_account) returns (uint256) {
+    function getUpdatedBalanceOf(address _account) external isValidAccount(_account) returns (uint256) {
         _updateReward();
+        return _balances[_account];
+    }
+
+    function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256) {
         return _balances[_account];
     }
 
