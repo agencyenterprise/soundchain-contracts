@@ -3,11 +3,9 @@ pragma solidity ^0.8;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "hardhat/console.sol";
-
-
-contract StakingRewards {
+contract StakingRewards is ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -45,7 +43,7 @@ contract StakingRewards {
         _;
     }
 
-    function getUpdatedBalanceOf(address _account) external isValidAccount(_account) returns (uint256) {
+    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) returns (uint256) {
         _updateReward();
         return _balances[_account];
     }
@@ -121,7 +119,7 @@ contract StakingRewards {
         emit RewardsCalculated(_totalStaked);
     }
 
-    function stake(uint256 _amount) external {
+    function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
@@ -133,7 +131,7 @@ contract StakingRewards {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external isValidAccount(msg.sender) {
+    function withdraw() external nonReentrant isValidAccount(msg.sender) {
         _updateReward();
         uint256 amount = _balances[msg.sender];
         require(amount > 0, "Current balance is 0");
