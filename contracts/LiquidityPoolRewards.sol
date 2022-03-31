@@ -4,11 +4,12 @@ pragma solidity ^0.8;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "hardhat/console.sol";
 
 
-contract LiquidityPoolRewards {
+contract LiquidityPoolRewards is ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -86,7 +87,7 @@ contract LiquidityPoolRewards {
         emit RewardsCalculated(_totalLpStaked);
     }
 
-    function stake(uint256 _amount) external {
+    function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         require(block.number - firstBlockNumber < 1000000, "This liquidity pool has ended. You can withdraw in case of any active balance");
         
@@ -100,7 +101,7 @@ contract LiquidityPoolRewards {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external isValidAccount(msg.sender) {
+    function withdraw() external nonReentrant isValidAccount(msg.sender) {
         _updateReward();
         uint256 lpAmount = _lpBalances[msg.sender];
         uint256 rewardsAmount = _OGUNrewards[msg.sender];
