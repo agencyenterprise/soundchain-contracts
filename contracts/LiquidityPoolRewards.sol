@@ -14,7 +14,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
     using SafeMath for uint256;
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant REWARDS_RATE = 20000000000000000000;
+    uint256 public constant REWARDS_RATE = 20000000000000000000; // 20.0 
     
     IERC20 public immutable OGUNToken;
     IERC20 public immutable lpToken;
@@ -36,8 +36,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         lpToken = IERC20(_lpToken);
         _totalRewardsSupply = _rewardsSupply;
         firstBlockNumber = block.number;
-        _lastUpdatedBlockNumber = block.number;
-    }
+    } 
 
     modifier isValidAccount(address _account) {
         require(_addressInserted[_account], "address hasn't stake any tokens yet");
@@ -62,6 +61,11 @@ contract LiquidityPoolRewards is ReentrancyGuard {
             return;
         }
         uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
+        //Calculate blocks under 1000000
+        if (block.number - firstBlockNumber > 1000000) {
+          blocksToCalculate = 1000000 - _lastUpdatedBlockNumber;
+        }
+
         uint256 rewards = _rewardPerBlock(userLpBalance, REWARDS_RATE, blocksToCalculate);
         _OGUNrewards[_user] += rewards; 
         _totalUsersRewards += rewards;
@@ -76,21 +80,29 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         if (block.number <= _lastUpdatedBlockNumber) {
             return;
         }
+        if (_lastUpdatedBlockNumber == 0) {
+          _lastUpdatedBlockNumber = block.number;
+          return;
+        }
+
+        if (_lastUpdatedBlockNumber - firstBlockNumber > 1000000){
+          return;
+        }
+
         if (_totalLpStaked <= 0) {
             return;
         }
+        
         for (uint256 i = 0; i < this.getAddressesSize(); i++){
             _calculateReward(_addresses[i]);
         }
         _lastUpdatedBlockNumber = block.number;
-
         emit RewardsCalculated(_totalLpStaked);
     }
 
     function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Stake: Amount must be greater than 0");
-        require(block.number - firstBlockNumber < 1000000, "This liquidity pool has ended. You can withdraw in case of any active balance");
-        
+        require(block.number - firstBlockNumber < 1000000, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
         _totalLpStaked += _amount;
