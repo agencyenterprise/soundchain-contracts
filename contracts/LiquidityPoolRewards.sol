@@ -45,6 +45,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
     function getUpdatedBalanceOf(address _account) external isValidAccount(_account) returns (uint256, uint256) {
         _updateReward();
+        emit RewardsCalculatedOf(_lpBalances[_account], _OGUNrewards[_account], _account);
         return (_lpBalances[_account], _OGUNrewards[_account]);
     }
 
@@ -63,7 +64,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
         //Calculate blocks under 1000000
         if (block.number - firstBlockNumber > 1000000) {
-          blocksToCalculate = 1000000 - _lastUpdatedBlockNumber;
+          blocksToCalculate = 1000000 - (_lastUpdatedBlockNumber - firstBlockNumber);
         }
 
         uint256 rewards = _rewardPerBlock(userLpBalance, REWARDS_RATE, blocksToCalculate);
@@ -150,4 +151,6 @@ contract LiquidityPoolRewards is ReentrancyGuard {
     event Withdraw(address indexed user, uint256 lpAmount, uint256 rewardsAmount);
 
     event RewardsCalculated(uint256 amount);
+
+    event RewardsCalculatedOf(uint256 balance, uint256 rewards,address account);
 }

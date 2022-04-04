@@ -1,6 +1,7 @@
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { ContractReceipt, ContractTransaction } from "ethers";
 import { ethers, network } from "hardhat";
 import {
   LiquidityPoolRewards,
@@ -35,7 +36,6 @@ describe("Staking", () => {
       await token.transfer(user2.address, transfer1m);
       await token.transfer(user3.address, transfer1m);
       await token.transfer(user4.address, transfer1m);
-
 
       await token.connect(user1).approve(stake.address, transfer1m);
       await token.connect(user2).approve(stake.address, transfer1m);
@@ -84,10 +84,8 @@ describe("Staking", () => {
         await stake.connect(user1).stake(transfer1m);
         await network.provider.send('hardhat_mine', ['0xf4240']); // + 1000000 blocks
         const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
-        expect(ethers.utils.formatEther(rewards)).to.eq('19997640.0'); // 999882 x 20
+        expect(ethers.utils.formatEther(rewards)).to.eq('19999800.0'); // 999990 x 20
       });
-      // console.log('Balance: ', ethers.utils.formatEther(stakedLP));
-      // console.log('rewards: ', ethers.utils.formatEther(rewards));
     });
 
     describe("Stake calculation for more than 1 user ", () => {
@@ -148,6 +146,17 @@ describe("Staking", () => {
       });
     });
 
+    describe("******** Testing RewardsCalculatedOf event *********", () => {
+      it("x24 - should alculate and modify the balance and return new state", async function () {
+        await stake.connect(user1).stake(transfer1m);
+        await network.provider.send('hardhat_mine', ['0x17']);
+        const tx: ContractTransaction = await stake.getUpdatedBalanceOf(user1.address);
+        const receipt: ContractReceipt = await tx.wait();
+        const event = receipt.events?.filter((x) => {return x.event == "RewardsCalculatedOf"});
+        expect(ethers.utils.formatEther(event[0].args?.rewards)).to.eq('480.0');
+      });
+    });
+
 
 
     describe("Withdraw", () => {
@@ -167,24 +176,6 @@ describe("Staking", () => {
           expect(ethers.utils.formatEther(user1Balance)).to.eq('4899820.0');
         });
     });
-
-    //   it("after withdraw, should not calculate rewards for account without balance ", async function () {
-    //     //+10 previous blocks from beforeEach function (This 10 blocks are 3076.92308 rewards that will not be apply)
-    //     await stake.connect(user1).stake(transfer1m);
-    //     await network.provider.send('hardhat_mine', ['0x2f9ae']); // + 194,989 blocks 
-    //     await stake.connect(user2).stake(ethers.utils.parseEther("1")); // Forces to change _lastUpdatedBlockNumber state
-    //     await network.provider.send('hardhat_mine', ['0x8ed28']); // + 585,000 blocks 
-    //     await stake.connect(user2).stake(ethers.utils.parseEther("1"));
-    //     await stake.connect(user1).withdraw();
-    //     await stake.connect(user2).stake(transfer500k);
-    //     await network.provider.send('hardhat_mine', ['0x17cdc0']); // + 1,560,000 blocks 
-    //     await stake.connect(user2).stake(ethers.utils.parseEther("1"));
-    //     await network.provider.send('hardhat_mine', ['0x23cd0a']); // + 2,346,250 blocks 
-    //     const balanceUser1 = await stake.callStatic.getUpdatedBalanceOf(user1.address); ;
-    //     const etherNumber = ethers.utils.formatEther(balanceUser1);
-    //     expect(etherNumber).to.eq('0.0');
-    //   });
-    // });
 
   });
 });
