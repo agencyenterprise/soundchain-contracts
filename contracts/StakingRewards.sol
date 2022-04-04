@@ -45,12 +45,13 @@ contract StakingRewards is ReentrancyGuard {
 
     function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) returns (uint256) {
         _updateReward();
+        emit RewardsCalculatedOf(_balances[_account], _account);
         return _balances[_account];
     }
 
     function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256) {
         return _balances[_account];
-    }
+    } 
 
     function _calculateReward(address _user) private {
         if (_totalRewardsSupply <= 0) {
@@ -165,4 +166,6 @@ contract StakingRewards is ReentrancyGuard {
     event Withdraw(address indexed user, uint256 amount);
 
     event RewardsCalculated(uint256 amount);
+
+    event RewardsCalculatedOf(uint256 amount, address account);
 }

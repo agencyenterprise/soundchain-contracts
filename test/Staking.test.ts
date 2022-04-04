@@ -1,6 +1,7 @@
 
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
+import { ContractReceipt, ContractTransaction } from "ethers";
 import { ethers, network } from "hardhat";
 import {
   ERC20,
@@ -115,6 +116,17 @@ describe("Staking", () => {
         await network.provider.send('hardhat_mine', ['0x33']);
         const balance = await stake.callStatic.getUpdatedBalanceOf(user1.address);
         expect(ethers.utils.formatEther(balance)).to.eq('1001956.3132636');
+      });
+
+      describe("Testing RewardsCalculatedOf event ", () => {
+        it("x24 - should alculate and modify the balance and return new state", async function () {
+          await stake.connect(user1).stake(transfer1m);
+          await network.provider.send('hardhat_mine', ['0x17']);
+          const tx: ContractTransaction = await stake.getUpdatedBalanceOf(user1.address);
+          const receipt: ContractReceipt = await tx.wait();
+          const event = receipt.events?.filter((x) => {return x.event == "RewardsCalculatedOf"});
+          expect(ethers.utils.formatEther(event[0].args?.amount)).to.eq('1007384.615392');
+        });
       });
 
       describe("Stake calculation between phases", () => {
