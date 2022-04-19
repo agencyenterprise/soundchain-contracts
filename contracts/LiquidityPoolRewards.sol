@@ -49,7 +49,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         return (_lpBalances[_account], _OGUNrewards[_account]);
     }
 
-    function getLastCalculatedBalanceOf(address _account) external view isValidAccount(_account) returns (uint256, uint256) {
+    function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256, uint256) {
         return (_lpBalances[_account], _OGUNrewards[_account]);
     }
 
@@ -99,6 +99,10 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         }
         _lastUpdatedBlockNumber = block.number;
         emit RewardsCalculated(_totalLpStaked);
+    }
+
+    function updateReward() external {
+        _updateReward();
     }
 
     function stake(uint256 _amount) external nonReentrant {
