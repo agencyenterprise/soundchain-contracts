@@ -120,6 +120,10 @@ contract StakingRewards is ReentrancyGuard {
         emit RewardsCalculated(_totalStaked);
     }
 
+    function updateReward() external {
+        _updateReward();
+    }
+
     function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
