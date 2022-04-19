@@ -61,7 +61,7 @@ describe("Staking", () => {
       it("x1 - should increase rewards balance of user 1 by 20", async function () {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
         expect(ethers.utils.formatEther(rewards)).to.eq('20.0');
       });
 
@@ -93,7 +93,7 @@ describe("Staking", () => {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
         await stake.connect(user3).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user2.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user2.address);
         expect(ethers.utils.formatEther(rewards)).to.eq('10.0');
       });
       
@@ -101,7 +101,7 @@ describe("Staking", () => {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
         await stake.connect(user3).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
         expect(ethers.utils.formatEther(rewards)).to.eq('30.0');
       });
 
@@ -110,7 +110,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer1m); //user 1 = 20
         await stake.connect(user3).stake(transfer1m); // user 1 = 30, user 2 =10
         await stake.connect(user4).stake(transfer1m); // user 1  = 36.666, user 2 = 16.6666, user 3= 6.6666
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
         const etherNumber = ethers.utils.formatEther(rewards);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('36.666667');
       });
@@ -120,7 +120,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer1m); //user 1 = 20
         await stake.connect(user3).stake(transfer1m); // user 1 = 30, user 2 =10
         await stake.connect(user4).stake(transfer1m); // user 1  = 36.666, user 2 = 16.6666, user 3= 6.6666
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
         const etherNumber = ethers.utils.formatEther(rewards);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('36.666667');
       });
@@ -130,7 +130,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer1m); 
         await stake.connect(user3).stake(transfer1m); 
         await stake.connect(user4).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user2.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user2.address);
         const etherNumber = ethers.utils.formatEther(rewards);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('16.666667');
       });
@@ -140,7 +140,7 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer1m); 
         await stake.connect(user3).stake(transfer1m); 
         await stake.connect(user4).stake(transfer1m); 
-        const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user3.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user3.address);
         const etherNumber = ethers.utils.formatEther(rewards);
         expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('6.666667');
       });
@@ -172,7 +172,7 @@ describe("Staking", () => {
           await network.provider.send('hardhat_mine', ['0x2f9ae']); // + 194,989 blocks
           await stake.connect(user1).withdraw();// + 1 block
           const user1Balance = await token.balanceOf(user1.address);
-          const [stakedLP, rewards] = await stake.callStatic.getLastCalculatedBalanceOf(user1.address);
+          const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
           expect(ethers.utils.formatEther(user1Balance)).to.eq('4899820.0');
         });
     });
