@@ -71,7 +71,6 @@ describe("OGUN", () => {
       it("substracts tokens from onwer on transferFrom", async function () {
         const expectedBalance = utils.parseEther("999000000");
         await token.approve(newWallet.address, transferAmount);
-        // await token.allowance(owner.address, newWallet.address);
         await token.connect(newWallet).transferFrom(owner.address, newWallet.address, transferAmount);
         const balance = await token.balanceOf(owner.address);
         expect(balance).to.eq(expectedBalance);
@@ -79,7 +78,6 @@ describe("OGUN", () => {
 
       it("adds tokens to new wallet on transferFrom", async function () {
         await token.approve(newWallet.address, transferAmount);
-        // await token.allowance(owner.address, newWallet.address);
         await token.connect(newWallet).transferFrom(owner.address, newWallet.address, transferAmount);
         const balance = await token.balanceOf(newWallet.address);
         expect(balance).to.eq(transferAmount);
@@ -88,7 +86,6 @@ describe("OGUN", () => {
       it("reverts tranfer when transfer amount exceeds allowance", async function () {
         const failedAmount = utils.parseEther("1000001");
         await token.approve(newWallet.address, transferAmount);
-        // await token.allowance(owner.address, newWallet.address);
         await expect(
           token.connect(newWallet)
           .transferFrom(owner.address, newWallet.address, failedAmount)
