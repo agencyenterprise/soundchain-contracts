@@ -9,6 +9,14 @@ contract StakingRewards is ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
+    event Stake(address indexed user, uint256 amount);
+
+    event Withdraw(address indexed user, uint256 amount);
+
+    event RewardsCalculated(uint256 amount);
+
+    event RewardsCalculatedOf(uint256 amount, address account);
+
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
     uint256 public constant REWARDS_PHASE_ONE = 307692308000000000000;
     uint256 public constant REWARDS_PHASE_TWO = 128205128000000000000; 
@@ -131,7 +139,7 @@ contract StakingRewards is ReentrancyGuard {
         _totalStaked += _amount;
         _totalRewardsSupply += _amount;
         _balances[msg.sender] += _amount;
-        setAddress(msg.sender);
+        addAddress(msg.sender);
 
         emit Stake(msg.sender, _amount);
     }
@@ -153,7 +161,7 @@ contract StakingRewards is ReentrancyGuard {
         emit Withdraw(msg.sender, amount);
     }
 
-    function setAddress(address account) internal {
+    function addAddress(address account) internal {
 
         if (!_addressInserted[account]) {
             _addressInserted[account] = true;
@@ -164,12 +172,4 @@ contract StakingRewards is ReentrancyGuard {
     function getAddressesSize() external view returns (uint256) {
         return _addresses.length;
     }
-
-    event Stake(address indexed user, uint256 amount);
-
-    event Withdraw(address indexed user, uint256 amount);
-
-    event RewardsCalculated(uint256 amount);
-
-    event RewardsCalculatedOf(uint256 amount, address account);
 }
