@@ -22,9 +22,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
     uint256 private _lastUpdatedBlockNumber;
     uint256 public immutable firstBlockNumber;
     uint256 private _totalRewardsSupply;
-    uint256 private _totalUsersRewards;
     uint256 private _totalLpStaked;
-    uint256 private _totalStakedTemp;
 
     mapping(address => uint256) private _OGUNrewards;
     mapping(address => uint256) private _lpBalances;
@@ -69,7 +67,6 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
         uint256 rewards = _rewardPerBlock(userLpBalance, REWARDS_RATE, blocksToCalculate);
         _OGUNrewards[_user] += rewards; 
-        _totalUsersRewards += rewards;
     }
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
@@ -91,6 +88,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         }
 
         if (_totalLpStaked <= 0) {
+            _lastUpdatedBlockNumber = block.number;
             return;
         }
         
@@ -111,7 +109,6 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
         _totalLpStaked += _amount;
-        _totalRewardsSupply += _amount;
         _lpBalances[msg.sender] += _amount;
         setAddress(msg.sender);
 
