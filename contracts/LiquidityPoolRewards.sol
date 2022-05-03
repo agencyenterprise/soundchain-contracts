@@ -30,7 +30,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
     uint256 private _lastUpdatedBlockNumber;
     uint256 public immutable firstBlockNumber;
     uint256 private _totalRewardsSupply;
-    uint256 private _totalLpStaked;
+    uint256 public totalLpStaked;
 
     mapping(address => uint256) private _OGUNrewards;
     mapping(address => uint256) private _lpBalances;
@@ -78,7 +78,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
     }
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
-        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalLpStaked);
+        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(totalLpStaked);
         return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
     }
 
@@ -95,7 +95,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
           return;
         }
 
-        if (_totalLpStaked <= 0) {
+        if (totalLpStaked <= 0) {
             _lastUpdatedBlockNumber = block.number;
             return;
         }
@@ -104,7 +104,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
             _calculateReward(_addresses[i]);
         }
         _lastUpdatedBlockNumber = block.number;
-        emit RewardsCalculated(_totalLpStaked);
+        emit RewardsCalculated(totalLpStaked);
     }
 
     function updateReward() external {
@@ -116,7 +116,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         require(block.number - firstBlockNumber < 1000000, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
-        _totalLpStaked += _amount;
+        totalLpStaked += _amount;
         _lpBalances[msg.sender] += _amount;
         addAddress(msg.sender);
 
@@ -135,7 +135,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
         _lpBalances[msg.sender] = 0;
         _OGUNrewards[msg.sender] = 0;
-        _totalLpStaked -= lpAmount;
+        totalLpStaked -= lpAmount;
         _totalRewardsSupply -= rewardsAmount;
         lpToken.safeTransfer(msg.sender, lpAmount);
         OGUNToken.safeTransfer(msg.sender, rewardsAmount);
