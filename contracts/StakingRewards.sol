@@ -32,7 +32,7 @@ contract StakingRewards is ReentrancyGuard {
     uint256 private _lastUpdatedBlockNumber;
     uint256 public immutable firstBlockNumber;
     uint256 private _totalRewardsSupply;
-    uint256 private _totalStaked;
+    uint256 public _totalStaked;
     uint256 private _totalStakedTemp;
 
     mapping(address => uint256) private _balances;
