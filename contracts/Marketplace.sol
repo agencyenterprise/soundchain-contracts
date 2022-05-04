@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
@@ -11,7 +12,10 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
+import "hardhat/console.sol";
+
 contract SoundchainMarketplace is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
 
@@ -22,6 +26,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 tokenId,
         uint256 quantity,
         uint256 pricePerItem,
+        uint256 OGUNPricePerItem,
+        bool acceptsMATIC,
+        bool acceptsOGUN,
         uint256 startingTime
     );
     event ItemSold(
@@ -30,13 +37,17 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address indexed nft,
         uint256 tokenId,
         uint256 quantity,
-        uint256 pricePerItem
+        uint256 pricePerItem,
+        bool isPaymentOGUN
     );
     event ItemUpdated(
         address indexed owner,
         address indexed nft,
         uint256 tokenId,
         uint256 newPrice,
+        uint256 newOGUNPrice,
+        bool acceptsMATIC,
+        bool acceptsOGUN,
         uint256 startingTime
     );
     event ItemCanceled(
@@ -51,10 +62,15 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     struct Listing {
         uint256 quantity;
         uint256 pricePerItem;
+        uint256 OGUNPricePerItem;
+        bool acceptsMATIC;
+        bool acceptsOGUN;
         uint256 startingTime;
     }
 
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
+
+    IERC20 public immutable OGUNToken;
 
     /// @notice NftAddress -> Token ID -> Owner -> Listing item
     mapping(address => mapping(uint256 => mapping(address => Listing)))
@@ -105,7 +121,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
 
 
     /// @notice Contract constructor
-    constructor(address payable _feeRecipient, uint16 _platformFee) {
+    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee) {
+        OGUNToken = IERC20(_OGUNToken);
         platformFee = _platformFee;
         feeRecipient = _feeRecipient;
     }
@@ -130,6 +147,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address _nftAddress,
         uint256 _tokenId,
         uint256 _newPrice,
+        uint256 _newOGUNPrice,
+        bool _acceptsMATIC,
+        bool _acceptsOGUN,
         uint256 _startingTime
     ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
         Listing storage listedItem = listings[_nftAddress][_tokenId][
@@ -142,13 +162,24 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             revert("invalid nft address");
         }
 
+        require(
+            (_acceptsMATIC || _acceptsOGUN),
+            "item should have a way of payment"
+        );
+
         listedItem.pricePerItem = _newPrice;
+        listedItem.acceptsMATIC = _acceptsMATIC;
+        listedItem.OGUNPricePerItem = _newOGUNPrice;
+        listedItem.acceptsOGUN = _acceptsOGUN;
         listedItem.startingTime = _startingTime;
         emit ItemUpdated(
             _msgSender(),
             _nftAddress,
             _tokenId,
             _newPrice,
+            _newOGUNPrice,
+            _acceptsMATIC,
+            _acceptsOGUN,
             _startingTime
         );
     }
@@ -159,7 +190,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     function buyItem(
         address _nftAddress,
         uint256 _tokenId,
-        address payable _owner
+        address payable _owner,
+        bool _isPaymentOGUN
     )
         external
         payable
@@ -167,45 +199,82 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         isListed(_nftAddress, _tokenId, _owner)
         validListing(_nftAddress, _tokenId, _owner)
     {
+            console.log('BUYNOW _isPaymentOGUN: ', _isPaymentOGUN);
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-        require(
-            msg.value >= listedItem.pricePerItem.mul(listedItem.quantity),
-            "insufficient balance to buy"
-        );
+        if (_isPaymentOGUN) {
+            uint256 allowance = OGUNToken.allowance(_msgSender(), address(this));
+            console.log('BUYNOW allowance: ', allowance);
+            require(
+                allowance >= listedItem.OGUNPricePerItem.mul(listedItem.quantity),
+                "insufficient balance to buy"
+            );
+            require(
+                listedItem.acceptsOGUN == true,
+                "this purchase can't be done in OGUN"
+            );
+        } else {
+            require(
+                msg.value >= listedItem.pricePerItem.mul(listedItem.quantity),
+                "insufficient balance to buy"
+            );
+            require(
+                listedItem.acceptsMATIC == true,
+                "this purchase can't be done in MATIC"
+            );
+        }
 
-        _buyItem(_nftAddress, _tokenId, _owner);
+        _buyItem(_nftAddress, _tokenId, _owner, _isPaymentOGUN);
     }
 
 
     function _buyItem(
         address _nftAddress,
         uint256 _tokenId,
-        address _owner
+        address _owner,
+        bool isPaymentOGUN
     ) private {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
-
-        uint256 price = listedItem.pricePerItem.mul(listedItem.quantity);
+        uint256 price;
+        if (isPaymentOGUN) {
+            price = listedItem.OGUNPricePerItem.mul(listedItem.quantity);
+        } else {
+            price = listedItem.pricePerItem.mul(listedItem.quantity);
+        }
         uint256 feeAmount = price.mul(platformFee).div(1e4);
 
-        (bool feeTransferSuccess, ) = feeRecipient.call{value: feeAmount}(
-            ""
-        );
-        require(feeTransferSuccess, "fee transfer failed");
+        // Platform Fee payment
+        if (isPaymentOGUN) {
+            OGUNToken.safeTransferFrom(_msgSender(), feeRecipient, feeAmount);
+        } else {
+            (bool feeTransferSuccess, ) = feeRecipient.call{value: feeAmount}(
+                ""
+            );
+            require(feeTransferSuccess, "fee transfer failed");
+        }
 
+        // Royalty Fee payment
         (address minter, uint256 royaltyFee) = IERC2981(_nftAddress).royaltyInfo(_tokenId, price - feeAmount);
         if (minter != address(0)) {
-            (bool royaltyTransferSuccess, ) = payable(minter).call{
-                value: royaltyFee
-            }("");
-            require(royaltyTransferSuccess, "royalty fee transfer failed");
+            if (isPaymentOGUN) {
+                OGUNToken.safeTransferFrom(_msgSender(), minter, royaltyFee);
+            } else {
+                (bool royaltyTransferSuccess, ) = payable(minter).call{
+                    value: royaltyFee
+                }("");
+                require(royaltyTransferSuccess, "royalty fee transfer failed");
+            }  
 
             feeAmount = feeAmount.add(royaltyFee);
         }
-
-        (bool ownerTransferSuccess, ) = _owner.call{
-            value: price.sub(feeAmount)
-        }("");
-        require(ownerTransferSuccess, "owner transfer failed");
+        // Owner payment
+        if (isPaymentOGUN) {
+            OGUNToken.safeTransferFrom(_msgSender(), _owner, feeAmount);
+        } else {
+            (bool ownerTransferSuccess, ) = _owner.call{
+                value: price.sub(feeAmount)
+            }("");
+            require(ownerTransferSuccess, "owner transfer failed");
+        }
 
         IERC721(_nftAddress).safeTransferFrom(
             _owner,
@@ -219,7 +288,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             _nftAddress,
             _tokenId,
             listedItem.quantity,
-            price.div(listedItem.quantity)
+            price.div(listedItem.quantity),
+            isPaymentOGUN
         );
         delete (listings[_nftAddress][_tokenId][_owner]);
     }
@@ -235,6 +305,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         uint256 _quantity,
         uint256 _pricePerItem,
+        uint256 _OGUNPricePerItem,
+        bool _acceptsMATIC,
+        bool _acceptsOGUN,
         uint256 _startingTime
     ) external notListed(_nftAddress, _tokenId, _msgSender()) {
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
@@ -248,10 +321,17 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             revert("invalid nft address");
         }
 
+        require(
+            (_acceptsMATIC || _acceptsOGUN),
+            "item should have a way of payment"
+        );
 
         listings[_nftAddress][_tokenId][_msgSender()] = Listing(
             _quantity,
             _pricePerItem,
+            _OGUNPricePerItem,
+            _acceptsMATIC,
+            _acceptsOGUN,
             _startingTime
         );
         emit ItemListed(
@@ -260,6 +340,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             _tokenId,
             _quantity,
             _pricePerItem,
+            _OGUNPricePerItem,
+            _acceptsMATIC,
+            _acceptsOGUN,
             _startingTime
         );
     }
