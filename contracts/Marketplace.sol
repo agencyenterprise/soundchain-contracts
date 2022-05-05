@@ -141,6 +141,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     /// @param _nftAddress Address of NFT contract
     /// @param _tokenId Token ID of NFT
     /// @param _newPrice New sale price for each iteam
+    /// @param _newOGUNPrice New sale price in OGUN for each iteam
+    /// @param _acceptsMATIC true in case accepts MATIC as payment
+    /// @param _acceptsOGUN true in case accepts OGUN as payment
     /// @param _startingTime scheduling for a future sale
     function updateListing(
         address _nftAddress,
@@ -186,6 +189,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     /// @notice Method for buying listed NFT
     /// @param _nftAddress NFT contract address
     /// @param _tokenId TokenId
+    /// @param _isPaymentOGUN true if the payment in OGUN
     function buyItem(
         address _nftAddress,
         uint256 _tokenId,
@@ -296,6 +300,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     /// @param _tokenId Token ID of NFT
     /// @param _quantity token amount to list
     /// @param _pricePerItem sale price for each iteam
+    /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _acceptsMATIC true in case accepts MATIC as payment
+    /// @param _acceptsOGUN true in case accepts OGUN as payment
     /// @param _startingTime scheduling for a future sale
     function listItem(
         address _nftAddress,
