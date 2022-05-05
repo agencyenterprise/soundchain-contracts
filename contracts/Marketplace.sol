@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 
-import "hardhat/console.sol";
 
 contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -199,11 +198,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         isListed(_nftAddress, _tokenId, _owner)
         validListing(_nftAddress, _tokenId, _owner)
     {
-            console.log('BUYNOW _isPaymentOGUN: ', _isPaymentOGUN);
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
         if (_isPaymentOGUN) {
             uint256 allowance = OGUNToken.allowance(_msgSender(), address(this));
-            console.log('BUYNOW allowance: ', allowance);
             require(
                 allowance >= listedItem.OGUNPricePerItem.mul(listedItem.quantity),
                 "insufficient balance to buy"
@@ -268,7 +265,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         }
         // Owner payment
         if (isPaymentOGUN) {
-            OGUNToken.safeTransferFrom(_msgSender(), _owner, feeAmount);
+            OGUNToken.safeTransferFrom(_msgSender(), _owner, price.sub(feeAmount));
         } else {
             (bool ownerTransferSuccess, ) = _owner.call{
                 value: price.sub(feeAmount)
