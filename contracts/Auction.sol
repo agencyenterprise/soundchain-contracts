@@ -169,8 +169,14 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
      @dev Bids from smart contracts are prohibited to prevent griefing with always reverting receiver
      @param _nftAddress ERC 721 Address
      @param _tokenId Token ID of the item being auctioned
+     @param _bidAmount > 0 if payment is in OGUN
      */
-     function placeBid(address _nftAddress, uint256 _tokenId)
+     function placeBid(
+        address _nftAddress, 
+        uint256 _tokenId,
+        bool _isPaymentOGUN,
+        uint256 _bidAmount
+    )
         external
         payable
         nonReentrant
@@ -185,7 +191,12 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             "bidding outside of the auction window"
         );
 
-        _placeBid(_nftAddress, _tokenId, msg.value);
+        if (_isPaymentOGUN) {
+            _placeBid(_nftAddress, _tokenId, _bidAmount);
+        } else {
+            _placeBid(_nftAddress, _tokenId, msg.value);
+        }
+        
     }
 
     function _placeBid(
