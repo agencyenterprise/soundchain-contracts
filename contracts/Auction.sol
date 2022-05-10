@@ -211,14 +211,14 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             "bid cannot be lower than reserve price"
         );
 
-        if (auction.isPaymentOGUN) {
-            OGUNToken.safeTransferFrom(_msgSender(), address(this), _bidAmount);
-        } 
-
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
         uint256 minBidRequired = highestBid.bid.add((highestBid.bid * minBidIncrement) / 100);
 
         require(_bidAmount >= minBidRequired, "failed to outbid highest bidder");
+
+        if (auction.isPaymentOGUN) {
+            OGUNToken.safeTransferFrom(_msgSender(), address(this), _bidAmount);
+        } 
 
         if (highestBid.bidder != address(0)) {
             _refundHighestBidder(
@@ -568,7 +568,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         bool _isPaymentOGUN
     ) private {
         if (_isPaymentOGUN) {
-            OGUNToken.safeTransferFrom(_msgSender(), address(this), _currentHighestBid);
+            OGUNToken.safeTransfer(_currentHighestBidder, _currentHighestBid);
         } else {
             (bool successRefund, ) = _currentHighestBidder.call{
                 value: _currentHighestBid
