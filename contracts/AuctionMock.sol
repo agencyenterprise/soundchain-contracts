@@ -7,7 +7,7 @@ import "./Auction.sol";
 contract SoundchainAuctionMock is SoundchainAuction {
     uint256 public nowOverride;
 
-    constructor(address payable _platformFeeRecipient, uint16 _platformFee) SoundchainAuction(_platformFeeRecipient, _platformFee) {}
+    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee) SoundchainAuction(_platformFeeRecipient, _OGUNToken, _platformFee) {}
 
     function setNowOverride(uint256 _now) external {
         nowOverride = _now;
