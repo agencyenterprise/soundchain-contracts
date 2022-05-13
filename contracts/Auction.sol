@@ -18,6 +18,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
+    uint256 public rewardsRate;
 
     event PauseToggled(bool isPaused);
 
@@ -113,7 +114,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee) {
+    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate) {
         OGUNToken = IERC20(_OGUNToken);
         require(
             _platformFeeRecipient != address(0),
@@ -122,6 +123,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
+        rewardsRate = _rewardsRate;
     }
 
     /**
@@ -318,9 +320,16 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             }
             payAmount = payAmount.sub(royaltyFee);
         }
+
         if (payAmount > 0) {
             if (auction.isPaymentOGUN) {
                 OGUNToken.safeTransfer(auction.owner, payAmount);
+
+                uint256 rewardValue = payAmount.mul(rewardsRate).div(1e4);
+                if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
+                    OGUNToken.safeTransferFrom(address(this), auction.owner, rewardValue);
+                    OGUNToken.safeTransferFrom(address(this), winner, rewardValue);
+                }
             } else {
                 (bool ownerTransferSuccess, ) = auction.owner.call{
                     value: payAmount
@@ -453,6 +462,18 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     }
 
     /**
+     @notice Method for updating rewards rate
+     @dev Only admin
+     @param _rewardsRate rate to be aplyed
+     */
+    function setRewardsRate(uint256 _rewardsRate) 
+        public 
+        onlyOwner 
+    {
+        rewardsRate = _rewardsRate;
+    }
+
+    /**
      @notice Method for updating platform fee address
      @dev Only admin
      @param _platformFeeRecipient payable address the address to sends the funds to
@@ -582,7 +603,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             _currentHighestBid
         );
     }
-
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;

@@ -17,6 +17,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
+    uint256 public rewardsRate;
 
     /// @notice Events for the contract
     event ItemListed(
@@ -120,10 +121,11 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
 
 
     /// @notice Contract constructor
-    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee) {
+    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate) {
         OGUNToken = IERC20(_OGUNToken);
         platformFee = _platformFee;
         feeRecipient = _feeRecipient;
+        rewardsRate = _rewardsRate;
     }
 
 
@@ -270,6 +272,12 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         // Owner payment
         if (isPaymentOGUN) {
             OGUNToken.safeTransferFrom(_msgSender(), _owner, price.sub(feeAmount));
+            
+            uint256 rewardValue = price.mul(rewardsRate).div(1e4);
+            if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
+                OGUNToken.safeTransferFrom(address(this), _owner, rewardValue);
+                OGUNToken.safeTransferFrom(address(this), _msgSender(), rewardValue);
+            }
         } else {
             (bool ownerTransferSuccess, ) = _owner.call{
                 value: price.sub(feeAmount)
@@ -377,6 +385,18 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     ////////////////////////////
     /// Internal and Private ///
     ////////////////////////////
+    
+    /**
+     @notice Method for updating rewards rate
+     @dev Only admin
+     @param _rewardsRate rate to be aplyed
+     */
+    function setRewardsRate(uint256 _rewardsRate) 
+        public 
+        onlyOwner 
+    {
+        rewardsRate = _rewardsRate;
+    }
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;
