@@ -15,6 +15,7 @@ describe("auction", () => {
   const secondTokenId = "1";
   const platformFee: any = "250"; // auction platform fee: 2.5%
   const tokenUri = "ipfs";
+  const rewardRate = "1000"; // reward rate: 10%
 
   let owner: SignerWithAddress,
     minter: SignerWithAddress,
@@ -41,7 +42,8 @@ describe("auction", () => {
     auction = await AuctionFactory.deploy(
       feeAddress.address, 
       OGUN.address, 
-      platformFee
+      platformFee,
+      rewardRate
       );
 
     await nft.safeMint(minter.address, tokenUri, 10);
@@ -52,6 +54,7 @@ describe("auction", () => {
 
     await OGUN.transfer(buyer2.address, "1000000000000000000000000");
     await OGUN.transfer(buyer.address, "1000000000000000000000000");
+    await OGUN.transfer(auction.address, "1000000000000000000000000");
   });
 
   describe("create auction", () => {
@@ -539,7 +542,7 @@ describe("auction", () => {
         const minterBalance = await OGUN.balanceOf(minter.address);
         const feeAddressBalance = await OGUN.balanceOf(feeAddress.address);
 
-        expect(minterBalance).to.be.equal(975000000000000000n);
+        expect(minterBalance).to.be.equal(1075000000000000000n); // 975000000000000000n + reward
         expect(feeAddressBalance).to.be.equal(25000000000000000n);
       });
 
@@ -552,7 +555,7 @@ describe("auction", () => {
         const minterBalance = await OGUN.balanceOf(minter.address);
         const feeAddressBalance = await OGUN.balanceOf(feeAddress.address);
 
-        expect(minterBalance).to.be.equal(975000000000000000n);
+        expect(minterBalance).to.be.equal(1075000000000000000n); //975000000000000000n + reward
         expect(feeAddressBalance).to.be.equal(25000000000000000n);
       });
     });
@@ -987,8 +990,9 @@ describe("auction", () => {
       // Minter balance 97500000000000000 + 195000000 (Previous auction)
 
       expect(feeAddressBalance).to.be.equal(25000000005000000n);
-      expect(buyerBalance).to.be.equal(1000000877499999800000000n);
-      expect(minterBalance).to.be.equal(97500000195000000n);
+      expect(buyerBalance).to.be.equal(1000000977499999820000000n);//1000000877499999800000000n + reward
+      expect(minterBalance).to.be.equal(97500000215000000n); //97500000195000000 + reward
+      expect(buyer2Balance).to.be.equal(999999100000000000000000n); // + reward
     });
   });
 });

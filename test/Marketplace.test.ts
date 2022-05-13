@@ -17,6 +17,7 @@ describe("marketplace", () => {
   const newPrice = "500000000000000000";
   const newOGUNPrice = "500000000000000000";
   const tokenUri = "ipfs";
+  const rewardRate = "1000"; // reward rate: 10%
 
   let owner: SignerWithAddress,
     safeMinter: SignerWithAddress,
@@ -44,6 +45,7 @@ describe("marketplace", () => {
       feeAddress.address,
       OGUN.address,
       platformFee,
+      rewardRate
     );
 
     await nft.safeMint(safeMinter.address, tokenUri, 10);
@@ -52,6 +54,8 @@ describe("marketplace", () => {
 
     await OGUN.transfer(buyer2.address, pricePerItem);
     await OGUN.transfer(buyer.address, pricePerItem);
+
+    await OGUN.transfer(marketplace.address, pricePerItem);
   });
 
   describe("list item", () => {
@@ -256,7 +260,7 @@ describe("marketplace", () => {
         .connect(buyer)
         .buyItem(nft.address, firstTokenId, safeMinter.address, true);
       expect(await OGUN.balanceOf(feeAddress.address)).to.be.equal(25000000000000000n);
-      expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(975000000000000000n);
+      expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(1075000000000000000n); // 975000000000000000 + rewards (100000000000000000)
       expect(await nft.ownerOf(firstTokenId)).to.be.equal(buyer.address);
     });
   });
@@ -309,6 +313,7 @@ describe("marketplace", () => {
         .listItem(nft.address, "2", "1", pricePerItem, OGUNPricePerItem, true, true, "0");
 
       // Sell - safeMinter gets 877500000000000000 as an owner + 97500000000000000 for royalty fees
+      // reward - safeMinter gets 10000000000000000 and buyer gets 10000000000000000
       await marketplace
         .connect(buyer)
         .buyItem(nft.address, "2", safeMinter.address, true);
@@ -318,13 +323,15 @@ describe("marketplace", () => {
       await marketplace
         .connect(buyer)
         .listItem(nft.address, "2", "1", pricePerItem, OGUNPricePerItem, true, true, "0");
-      
+
       // Sell - safeMinter gets 97500000000000000 for royalty fees
+      // reward - buyer gets 10000000000000000 and buyer2 gets 10000000000000000
       await marketplace.connect(buyer2).buyItem(nft.address, "2", buyer.address, true);
 
       expect(await OGUN.balanceOf(feeAddress.address)).to.be.equal(50000000000000000n);
-      expect(await OGUN.balanceOf(buyer.address)).to.be.equal(877500000000000000n);
-      expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(1072500000000000000n);
+      expect(await OGUN.balanceOf(buyer.address)).to.be.equal(1077500000000000000n); // 877500000000000000 + rewards * 2 (200000000000000000) - Two actions here Buy and Sell
+      expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(1172500000000000000n); // 1072500000000000000 + rewards (100000000000000000)
+      expect(await OGUN.balanceOf(buyer2.address)).to.be.equal(100000000000000000n); // just rewards (100000000000000000)
     });
   });
 });

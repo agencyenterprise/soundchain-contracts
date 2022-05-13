@@ -325,10 +325,10 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             if (auction.isPaymentOGUN) {
                 OGUNToken.safeTransfer(auction.owner, payAmount);
 
-                uint256 rewardValue = payAmount.mul(rewardsRate).div(1e4);
+                uint256 rewardValue = winningBid.mul(rewardsRate).div(1e4);
                 if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
-                    OGUNToken.safeTransferFrom(address(this), auction.owner, rewardValue);
-                    OGUNToken.safeTransferFrom(address(this), winner, rewardValue);
+                    OGUNToken.safeTransfer(auction.owner, rewardValue);
+                    OGUNToken.safeTransfer(winner, rewardValue);
                 }
             } else {
                 (bool ownerTransferSuccess, ) = auction.owner.call{

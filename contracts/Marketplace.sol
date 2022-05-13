@@ -275,8 +275,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             
             uint256 rewardValue = price.mul(rewardsRate).div(1e4);
             if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
-                OGUNToken.safeTransferFrom(address(this), _owner, rewardValue);
-                OGUNToken.safeTransferFrom(address(this), _msgSender(), rewardValue);
+                OGUNToken.safeTransfer(_owner, rewardValue);
+                OGUNToken.safeTransfer(_msgSender(), rewardValue);
             }
         } else {
             (bool ownerTransferSuccess, ) = _owner.call{
