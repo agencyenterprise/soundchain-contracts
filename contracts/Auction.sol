@@ -474,6 +474,19 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     }
 
     /**
+     @notice Method for withdraw any leftover OGUN
+     @dev Only admin
+     @param destination Where the OGUN will be sent
+     */
+    function withdraw(address destination) 
+        external 
+        onlyOwner 
+    {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
+    }
+
+    /**
      @notice Method for updating platform fee address
      @dev Only admin
      @param _platformFeeRecipient payable address the address to sends the funds to

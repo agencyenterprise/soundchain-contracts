@@ -382,10 +382,19 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         emit UpdatePlatformFeeRecipient(_platformFeeRecipient);
     }
 
-    ////////////////////////////
-    /// Internal and Private ///
-    ////////////////////////////
-    
+    /**
+     @notice Method for withdraw any leftover OGUN
+     @dev Only admin
+     @param destination Where the OGUN will be sent
+     */
+     function withdraw(address destination) 
+        external 
+        onlyOwner 
+    {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
+    }
+
     /**
      @notice Method for updating rewards rate
      @dev Only admin
@@ -397,6 +406,11 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     {
         rewardsRate = _rewardsRate;
     }
+    ////////////////////////////
+    /// Internal and Private ///
+    ////////////////////////////
+    
+
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;
