@@ -19,6 +19,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using Address for address payable;
     uint256 public rewardsRate;
+    uint256 public rewardsLimit;
 
     event PauseToggled(bool isPaused);
 
@@ -114,7 +115,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate) {
+    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate, uint256 _rewardsLimit) {
         OGUNToken = IERC20(_OGUNToken);
         require(
             _platformFeeRecipient != address(0),
@@ -124,6 +125,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
         rewardsRate = _rewardsRate;
+        rewardsLimit = _rewardsLimit;
     }
 
     /**
@@ -326,6 +328,9 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
                 OGUNToken.safeTransfer(auction.owner, payAmount);
 
                 uint256 rewardValue = winningBid.mul(rewardsRate).div(1e4);
+                if (rewardValue > rewardsLimit) {
+                    rewardValue = rewardsLimit;
+                }
                 if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
                     OGUNToken.safeTransfer(auction.owner, rewardValue);
                     OGUNToken.safeTransfer(winner, rewardValue);
@@ -471,6 +476,18 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         onlyOwner 
     {
         rewardsRate = _rewardsRate;
+    }
+
+    /**
+     @notice Method for updating rewards limit
+     @dev Only admin
+     @param newLimit Hardcap for rewards
+     */
+    function setRewardsLimit(uint256 newLimit) 
+        external 
+        onlyOwner 
+    {
+        rewardsLimit = newLimit;
     }
 
     /**

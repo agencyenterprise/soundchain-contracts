@@ -18,6 +18,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
     using Address for address payable;
     uint256 public rewardsRate;
+    uint256 public rewardsLimit;
 
     /// @notice Events for the contract
     event ItemListed(
@@ -121,11 +122,12 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
 
 
     /// @notice Contract constructor
-    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate) {
+    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate, uint256 _rewardsLimit) {
         OGUNToken = IERC20(_OGUNToken);
         platformFee = _platformFee;
         feeRecipient = _feeRecipient;
         rewardsRate = _rewardsRate;
+        rewardsLimit = _rewardsLimit;
     }
 
 
@@ -274,6 +276,9 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             OGUNToken.safeTransferFrom(_msgSender(), _owner, price.sub(feeAmount));
             
             uint256 rewardValue = price.mul(rewardsRate).div(1e4);
+            if (rewardValue > rewardsLimit) {
+                rewardValue = rewardsLimit;
+            }
             if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
                 OGUNToken.safeTransfer(_owner, rewardValue);
                 OGUNToken.safeTransfer(_msgSender(), rewardValue);
@@ -406,6 +411,18 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     {
         rewardsRate = _rewardsRate;
     }
+
+    /**
+     @notice Method for updating rewards limit
+     @dev Only admin
+     @param newLimit Hardcap for rewards
+     */
+     function setRewardsLimit(uint256 newLimit) 
+     external 
+     onlyOwner 
+ {
+     rewardsLimit = newLimit;
+ }
     ////////////////////////////
     /// Internal and Private ///
     ////////////////////////////
