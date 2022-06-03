@@ -16,6 +16,7 @@ describe("auction", () => {
   const platformFee: any = "250"; // auction platform fee: 2.5%
   const tokenUri = "ipfs";
   const rewardRate = "1000"; // reward rate: 10%
+  const rewardLimit = "1000000000000000000000"; // reward rate: 10%
 
   let owner: SignerWithAddress,
     minter: SignerWithAddress,
@@ -43,7 +44,8 @@ describe("auction", () => {
       feeAddress.address, 
       OGUN.address, 
       platformFee,
-      rewardRate
+      rewardRate,
+      rewardLimit
       );
 
     await nft.safeMint(minter.address, tokenUri, 10);
@@ -958,12 +960,7 @@ describe("auction", () => {
       const feeAddressBalance1 = await OGUN.balanceOf(feeAddress.address);
       const buyerBalance1 = await OGUN.balanceOf(buyer.address);
       const minterBalance1 = await OGUN.balanceOf(minter.address);
-
-      console.log('1feeAddressBalance: ', feeAddressBalance1);
-      console.log('1buyerBalance: ', buyerBalance1);
-      console.log('1minterBalance: ', minterBalance1);
-
-
+      
       await auction.setNowOverride("2");
       await auction.connect(buyer).createAuction(
         nft.address,

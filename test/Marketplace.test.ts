@@ -18,6 +18,7 @@ describe("marketplace", () => {
   const newOGUNPrice = "500000000000000000";
   const tokenUri = "ipfs";
   const rewardRate = "1000"; // reward rate: 10%
+  const rewardLimit = "1000000000000000000000"; // reward rate: 10%
 
   let owner: SignerWithAddress,
     safeMinter: SignerWithAddress,
@@ -45,7 +46,8 @@ describe("marketplace", () => {
       feeAddress.address,
       OGUN.address,
       platformFee,
-      rewardRate
+      rewardRate,
+      rewardLimit
     );
 
     await nft.safeMint(safeMinter.address, tokenUri, 10);
