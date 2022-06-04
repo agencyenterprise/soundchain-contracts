@@ -16,10 +16,12 @@ describe("auction", () => {
   const platformFee: any = "250"; // auction platform fee: 2.5%
   const tokenUri = "ipfs";
   const rewardRate = "1000"; // reward rate: 10%
+  const rewardLimit = "1000000000000000000000"; // reward rate: 10%
 
   let owner: SignerWithAddress,
     minter: SignerWithAddress,
     buyer: SignerWithAddress,
+    overPricedbuyer: SignerWithAddress,
     buyer2: SignerWithAddress,
     nft: Soundchain721,
     OGUN: ERC20,
@@ -27,7 +29,7 @@ describe("auction", () => {
     auction: SoundchainAuctionMock;
 
   beforeEach(async () => {
-    [owner, minter, buyer, feeAddress, buyer2] = await ethers.getSigners();
+    [owner, minter, buyer, feeAddress, buyer2, overPricedbuyer] = await ethers.getSigners();
 
     const SoundchainCollectible: Soundchain721__factory =
       await ethers.getContractFactory("Soundchain721");
@@ -43,7 +45,8 @@ describe("auction", () => {
       feeAddress.address, 
       OGUN.address, 
       platformFee,
-      rewardRate
+      rewardRate,
+      rewardLimit
       );
 
     await nft.safeMint(minter.address, tokenUri, 10);
@@ -54,6 +57,7 @@ describe("auction", () => {
 
     await OGUN.transfer(buyer2.address, "1000000000000000000000000");
     await OGUN.transfer(buyer.address, "1000000000000000000000000");
+    await OGUN.transfer(overPricedbuyer.address, "1000000000000000000000000");
     await OGUN.transfer(auction.address, "1000000000000000000000000");
   });
 
@@ -558,6 +562,21 @@ describe("auction", () => {
         expect(minterBalance).to.be.equal(1075000000000000000n); //975000000000000000n + reward
         expect(feeAddressBalance).to.be.equal(25000000000000000n);
       });
+
+      it("buyer can result the OGUN auction - Over Max Reward Limit", async () => {
+        await OGUN.connect(buyer).approve(auction.address, BigNumber.from(15000000000000000000000n));
+        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "15000000000000000000000");
+        await auction.setNowOverride("40000");
+
+        await auction.connect(buyer).resultAuction(nft.address, firstTokenId);
+
+        const minterBalance = await OGUN.balanceOf(minter.address);
+        const feeAddressBalance = await OGUN.balanceOf(feeAddress.address);
+
+        expect(minterBalance).to.be.equal(15625000000000000000000n); // 14625 Ogun + rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
+        expect(feeAddressBalance).to.be.equal(375000000000000000000n); // 2,5% of 15k Ogun - Not earning rewards
+        expect(await OGUN.balanceOf(buyer.address)).to.be.equal(986000000000000000000000n); // original balance - 15k + the rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
+      });
     });
     
     describe("successfully resulting an auction", async () => {
@@ -958,12 +977,7 @@ describe("auction", () => {
       const feeAddressBalance1 = await OGUN.balanceOf(feeAddress.address);
       const buyerBalance1 = await OGUN.balanceOf(buyer.address);
       const minterBalance1 = await OGUN.balanceOf(minter.address);
-
-      console.log('1feeAddressBalance: ', feeAddressBalance1);
-      console.log('1buyerBalance: ', buyerBalance1);
-      console.log('1minterBalance: ', minterBalance1);
-
-
+      
       await auction.setNowOverride("2");
       await auction.connect(buyer).createAuction(
         nft.address,

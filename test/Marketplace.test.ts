@@ -11,25 +11,29 @@ import {
 describe("marketplace", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
+  const overPricedTokenId = "2";
   const platformFee: any = "250"; // marketplace platform fee: 2.5%
   const pricePerItem = "1000000000000000000";
   const OGUNPricePerItem = "1000000000000000000";
+  const OGUNOverPricePerItem = "15000000000000000000000"; //15k OGUN
   const newPrice = "500000000000000000";
   const newOGUNPrice = "500000000000000000";
   const tokenUri = "ipfs";
   const rewardRate = "1000"; // reward rate: 10%
+  const rewardLimit = "1000000000000000000000"; // reward limit 1k OGUN
 
   let owner: SignerWithAddress,
     safeMinter: SignerWithAddress,
     buyer: SignerWithAddress,
     buyer2: SignerWithAddress,
+    overPriceBuyer: SignerWithAddress,
     nft: Soundchain721,
     feeAddress: SignerWithAddress,
     OGUN: ERC20,
     marketplace: SoundchainMarketplace;
 
   beforeEach(async () => {
-    [owner, safeMinter, buyer, feeAddress, buyer2] = await ethers.getSigners();
+    [owner, safeMinter, buyer, feeAddress, buyer2, overPriceBuyer] = await ethers.getSigners();
 
     const SoundchainCollectible: Soundchain721__factory =
       await ethers.getContractFactory("Soundchain721");
@@ -45,7 +49,8 @@ describe("marketplace", () => {
       feeAddress.address,
       OGUN.address,
       platformFee,
-      rewardRate
+      rewardRate,
+      rewardLimit
     );
 
     await nft.safeMint(safeMinter.address, tokenUri, 10);
@@ -54,6 +59,7 @@ describe("marketplace", () => {
 
     await OGUN.transfer(buyer2.address, pricePerItem);
     await OGUN.transfer(buyer.address, pricePerItem);
+    await OGUN.transfer(overPriceBuyer.address, OGUNOverPricePerItem);
 
     await OGUN.transfer(marketplace.address, pricePerItem);
   });
@@ -187,6 +193,10 @@ describe("marketplace", () => {
       await marketplace
         .connect(safeMinter)
         .listItem(nft.address, firstTokenId, "1", pricePerItem, OGUNPricePerItem, true, true, "0");
+
+      await marketplace
+        .connect(safeMinter)
+        .listItem(nft.address, overPricedTokenId, "1", pricePerItem, OGUNOverPricePerItem, true, true, "0");
     });
 
     it("reverts when seller doesn't own the item", async () => {
@@ -262,6 +272,21 @@ describe("marketplace", () => {
       expect(await OGUN.balanceOf(feeAddress.address)).to.be.equal(25000000000000000n);
       expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(1075000000000000000n); // 975000000000000000 + rewards (100000000000000000)
       expect(await nft.ownerOf(firstTokenId)).to.be.equal(buyer.address);
+    });
+
+    it("successfully purchase item with OGUN - Over Max Reward Limit", async () => {
+      
+      await OGUN.transfer(marketplace.address, OGUNOverPricePerItem);
+
+      await OGUN.connect(overPriceBuyer).approve(marketplace.address, OGUNOverPricePerItem);
+      await marketplace
+        .connect(overPriceBuyer)
+        .buyItem(nft.address, overPricedTokenId, safeMinter.address, true);
+
+      expect(await OGUN.balanceOf(feeAddress.address)).to.be.equal(375000000000000000000n); // 2,5% of 15k Ogun - Not earning rewards
+      expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(15625000000000000000000n); // 14625 Ogun + rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
+      expect(await OGUN.balanceOf(overPriceBuyer.address)).to.be.equal(1000000000000000000000n); // just the rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
+      expect(await nft.ownerOf(overPricedTokenId)).to.be.equal(overPriceBuyer.address);
     });
   });
 
