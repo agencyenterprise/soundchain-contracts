@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "./IEditions.sol";
+import "hardhat/console.sol";
 
 contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
@@ -396,7 +397,6 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         bool _acceptsOGUN,
         uint256 _startingTime
     ) external editionNotListed(editionNumber) {
-        
         editionListings[editionNumber] = true;
 
         require(
@@ -404,7 +404,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             "item should have a way of payment"
         );
 
-        if (IERC165(_nftEditionAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+        if (
+            IERC165(_nftEditionAddress).supportsInterface(INTERFACE_ID_ERC721)
+        ) {
             IERC721 nft = IERC721(_nftEditionAddress);
             IEditions nftEdition = IEditions(_nftEditionAddress);
 
@@ -413,13 +415,12 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                 "item not approved"
             );
 
-            uint256[] memory tokensFromEdition = nftEdition.getTokenIdsOfEdition(
-                editionNumber
-            );
+            uint256[] memory tokensFromEdition = nftEdition
+                .getTokenIdsOfEdition(editionNumber);
 
             require(tokensFromEdition.length > 0, "edition has no tokens");
 
-            for (uint256 index = 0; index <= tokensFromEdition.length; index++) {
+            for (uint256 index = 0; index < tokensFromEdition.length; index++) {
                 if (nft.ownerOf(tokensFromEdition[index]) == _msgSender()) {
                     listings[_nftEditionAddress][tokensFromEdition[index]][
                         _msgSender()

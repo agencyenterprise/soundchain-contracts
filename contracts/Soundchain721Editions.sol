@@ -9,6 +9,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "./IEditions.sol";
+import "hardhat/console.sol";
 
 contract Soundchain721Editions is
     ERC721,
@@ -25,36 +26,13 @@ contract Soundchain721Editions is
     mapping(uint256 => address) public royaltyReceivers;
     mapping(uint256 => uint8) public royaltyPercentage;
 
-    /* EDITIONS DECLARATIONS*/
-    // ============ Structs ============
-
-    // struct Edition {
-    //     // The id for this edition. --> keccak256(creatorAddress + ID from Backend)
-    //     bytes32 id;
-    //     // The maximum number of tokens that can be sold.
-    //     uint256 quantity;
-    //     // The number of tokens sold so far.
-    //     uint256 numSold;
-    //     // The number of tokens still available.
-    //     uint256 numRemaining;
-    // }
-
     // ============ Mutable Storage ============
-
     // Mapping of edition id to descriptive data.
     mapping(uint256 => Edition) public editions;
     // Mapping of token id to edition id.
     mapping(uint256 => uint256) public tokenToEdition;
     // Mapping of edition id to token id.
     uint256 private nextEditionId = 1;
-
-    // ============ Events ============
-
-    // event EditionCreated(
-    //     bytes32 id,
-    //     uint256 quantity,
-    //     uint256 indexed editionNumber
-    // );
 
     constructor() ERC721("SoundchainCollectible", "SC") {}
 
@@ -66,9 +44,9 @@ contract Soundchain721Editions is
     ) public {
         require(editions[editionNumber].quantity > 0, "Invalid editionNumber");
         require(
-                    editions[editionNumber].numSold < editions[editionNumber].quantity,
-                    "This edition is already sold out."
-                );
+            editions[editionNumber].numSold < editions[editionNumber].quantity,
+            "This edition is already full"
+        );
 
         uint256 tokenId = _tokenIdCounter.current();
 
@@ -76,9 +54,11 @@ contract Soundchain721Editions is
         _setTokenURI(tokenId, _tokenURI);
         _tokenIdCounter.increment();
         setRoyalty(tokenId, to, _royaltyPercentage);
-        
-        editions[editionNumber].numSold++; 
-        editions[editionNumber].numRemaining = editions[editionNumber].quantity - editions[editionNumber].numSold; 
+
+        editions[editionNumber].numSold++;
+        editions[editionNumber].numRemaining =
+            editions[editionNumber].quantity -
+            editions[editionNumber].numSold;
         tokenToEdition[tokenId] = editionNumber;
     }
 
@@ -164,7 +144,7 @@ contract Soundchain721Editions is
 
         nextEditionId++;
     }
-    
+
     function createEditionWithNFTs(
         // The number of tokens that can be minted and sold.
         uint256 editionQuantity,
@@ -183,7 +163,7 @@ contract Soundchain721Editions is
             numRemaining: editionQuantity
         });
 
-        for(uint256 i = 0; i < editionQuantity; i++) {
+        for (uint256 i = 0; i < editionQuantity; i++) {
             safeMint(to, _tokenURI, _royaltyPercentage, nextEditionId);
         }
 
@@ -192,8 +172,16 @@ contract Soundchain721Editions is
         nextEditionId++;
     }
 
-    function getEditionByID(bytes32 id) public view returns (Edition memory retEdition, uint256 editionNumber) {
-        for (uint256 editionCounter = 1; editionCounter < nextEditionId; editionCounter++) {
+    function getEditionByID(bytes32 id)
+        public
+        view
+        returns (Edition memory retEdition, uint256 editionNumber)
+    {
+        for (
+            uint256 editionCounter = 1;
+            editionCounter < nextEditionId;
+            editionCounter++
+        ) {
             if (editions[editionCounter].id == id) {
                 return (editions[editionCounter], editionCounter);
             }
@@ -204,8 +192,14 @@ contract Soundchain721Editions is
         @dev Get token ids for a given edition number
         @param editionNumber edition number
      */
-    function getTokenIdsOfEdition(uint256 editionNumber) public view returns (uint256[] memory) {
-        uint256[] memory tokenIdsOfEdition = new uint256[](editions[editionNumber].numSold);
+    function getTokenIdsOfEdition(uint256 editionNumber)
+        public
+        view
+        returns (uint256[] memory)
+    {
+        uint256[] memory tokenIdsOfEdition = new uint256[](
+            editions[editionNumber].numSold
+        );
         uint256 index = 0;
 
         for (uint256 id = 1; id < _tokenIdCounter.current(); id++) {
@@ -240,7 +234,11 @@ contract Soundchain721Editions is
         return string(buffer);
     }
 
-    function getBytes32(string memory word) public pure returns (bytes32 retBytes) {
+    function getBytes32(string memory word)
+        public
+        pure
+        returns (bytes32 retBytes)
+    {
         return keccak256(abi.encodePacked(word));
     }
 }
