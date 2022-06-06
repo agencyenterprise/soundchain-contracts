@@ -12,7 +12,6 @@ import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "./IEditions.sol";
-import "hardhat/console.sol";
 
 contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;

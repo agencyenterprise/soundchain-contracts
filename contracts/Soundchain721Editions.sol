@@ -9,7 +9,6 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "./IEditions.sol";
-import "hardhat/console.sol";
 
 contract Soundchain721Editions is
     ERC721,
