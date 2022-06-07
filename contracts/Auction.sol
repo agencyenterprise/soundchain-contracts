@@ -18,6 +18,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
+    uint256 public rewardsRate;
+    uint256 public rewardsLimit;
 
     event PauseToggled(bool isPaused);
 
@@ -113,7 +115,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee) {
+    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate, uint256 _rewardsLimit) {
         OGUNToken = IERC20(_OGUNToken);
         require(
             _platformFeeRecipient != address(0),
@@ -122,6 +124,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
+        rewardsRate = _rewardsRate;
+        rewardsLimit = _rewardsLimit;
     }
 
     /**
@@ -318,9 +322,19 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             }
             payAmount = payAmount.sub(royaltyFee);
         }
+
         if (payAmount > 0) {
             if (auction.isPaymentOGUN) {
                 OGUNToken.safeTransfer(auction.owner, payAmount);
+
+                uint256 rewardValue = winningBid.mul(rewardsRate).div(1e4);
+                if (rewardValue > rewardsLimit) {
+                    rewardValue = rewardsLimit;
+                }
+                if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
+                    OGUNToken.safeTransfer(auction.owner, rewardValue);
+                    OGUNToken.safeTransfer(winner, rewardValue);
+                }
             } else {
                 (bool ownerTransferSuccess, ) = auction.owner.call{
                     value: payAmount
@@ -453,6 +467,43 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     }
 
     /**
+     @notice Method for updating rewards rate
+     @dev Only admin
+     @param _rewardsRate rate to be aplyed
+     */
+    function setRewardsRate(uint256 _rewardsRate) 
+        public 
+        onlyOwner 
+    {
+        rewardsRate = _rewardsRate;
+    }
+
+    /**
+     @notice Method for updating rewards limit
+     @dev Only admin
+     @param newLimit Hardcap for rewards
+     */
+    function setRewardsLimit(uint256 newLimit) 
+        external 
+        onlyOwner 
+    {
+        rewardsLimit = newLimit;
+    }
+
+    /**
+     @notice Method for withdraw any leftover OGUN
+     @dev Only admin
+     @param destination Where the OGUN will be sent
+     */
+    function withdraw(address destination) 
+        external 
+        onlyOwner 
+    {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
+    }
+
+    /**
      @notice Method for updating platform fee address
      @dev Only admin
      @param _platformFeeRecipient payable address the address to sends the funds to
@@ -582,7 +633,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             _currentHighestBid
         );
     }
-
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;

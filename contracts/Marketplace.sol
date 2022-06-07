@@ -17,6 +17,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
+    uint256 public rewardsRate;
+    uint256 public rewardsLimit;
 
     /// @notice Events for the contract
     event ItemListed(
@@ -120,10 +122,12 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
 
 
     /// @notice Contract constructor
-    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee) {
+    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate, uint256 _rewardsLimit) {
         OGUNToken = IERC20(_OGUNToken);
         platformFee = _platformFee;
         feeRecipient = _feeRecipient;
+        rewardsRate = _rewardsRate;
+        rewardsLimit = _rewardsLimit;
     }
 
 
@@ -270,6 +274,15 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         // Owner payment
         if (isPaymentOGUN) {
             OGUNToken.safeTransferFrom(_msgSender(), _owner, price.sub(feeAmount));
+            
+            uint256 rewardValue = price.mul(rewardsRate).div(1e4);
+            if (rewardValue > rewardsLimit) {
+                rewardValue = rewardsLimit;
+            }
+            if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
+                OGUNToken.safeTransfer(_owner, rewardValue);
+                OGUNToken.safeTransfer(_msgSender(), rewardValue);
+            }
         } else {
             (bool ownerTransferSuccess, ) = _owner.call{
                 value: price.sub(feeAmount)
@@ -374,9 +387,47 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         emit UpdatePlatformFeeRecipient(_platformFeeRecipient);
     }
 
+    /**
+     @notice Method for withdraw any leftover OGUN
+     @dev Only admin
+     @param destination Where the OGUN will be sent
+     */
+     function withdraw(address destination) 
+        external 
+        onlyOwner 
+    {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
+    }
+
+    /**
+     @notice Method for updating rewards rate
+     @dev Only admin
+     @param _rewardsRate rate to be aplyed
+     */
+    function setRewardsRate(uint256 _rewardsRate) 
+        public 
+        onlyOwner 
+    {
+        rewardsRate = _rewardsRate;
+    }
+
+    /**
+     @notice Method for updating rewards limit
+     @dev Only admin
+     @param newLimit Hardcap for rewards
+     */
+     function setRewardsLimit(uint256 newLimit) 
+     external 
+     onlyOwner 
+ {
+     rewardsLimit = newLimit;
+ }
     ////////////////////////////
     /// Internal and Private ///
     ////////////////////////////
+    
+
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;
