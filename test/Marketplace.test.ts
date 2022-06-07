@@ -1,46 +1,46 @@
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
+import { utils } from "ethers";
 import {
-  ERC20, Soundchain721,
-  Soundchain721__factory,
-  SoundchainMarketplace,
-  SoundchainMarketplace__factory
+  ERC20,
+  SoundchainMarketplaceEditions,
+  SoundchainMarketplaceEditions__factory,
+  Soundchain721Editions,
+  Soundchain721Editions__factory
 } from "../typechain-types";
 
 describe("marketplace", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
-  const overPricedTokenId = "2";
   const platformFee: any = "250"; // marketplace platform fee: 2.5%
   const pricePerItem = "1000000000000000000";
   const OGUNPricePerItem = "1000000000000000000";
-  const OGUNOverPricePerItem = "15000000000000000000000"; //15k OGUN
   const newPrice = "500000000000000000";
   const newOGUNPrice = "500000000000000000";
   const tokenUri = "ipfs";
   const rewardRate = "1000"; // reward rate: 10%
-  const rewardLimit = "1000000000000000000000"; // reward limit 1k OGUN
+  const rewardLimit = "1000000000000000000000"; // reward rate: 10%
+  const initialOgunBalance = "1000000000000000000000";
 
   let owner: SignerWithAddress,
     safeMinter: SignerWithAddress,
     buyer: SignerWithAddress,
     buyer2: SignerWithAddress,
-    overPriceBuyer: SignerWithAddress,
-    nft: Soundchain721,
+    nft: Soundchain721Editions,
     feeAddress: SignerWithAddress,
     OGUN: ERC20,
-    marketplace: SoundchainMarketplace;
+    marketplace: SoundchainMarketplaceEditions;
 
   beforeEach(async () => {
     [owner, safeMinter, buyer, feeAddress, buyer2, overPriceBuyer] = await ethers.getSigners();
 
-    const SoundchainCollectible: Soundchain721__factory =
-      await ethers.getContractFactory("Soundchain721");
+    const SoundchainCollectible: Soundchain721Editions__factory =
+      await ethers.getContractFactory("Soundchain721Editions");
     nft = await SoundchainCollectible.deploy();
 
-    const MarketplaceFactory: SoundchainMarketplace__factory =
-      await ethers.getContractFactory("SoundchainMarketplace");
+    const MarketplaceFactory: SoundchainMarketplaceEditions__factory =
+      await ethers.getContractFactory("SoundchainMarketplaceEditions");
 
     const token = await ethers.getContractFactory("SoundchainOGUN20");
     OGUN = await token.deploy();
@@ -85,15 +85,15 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await expect(
         marketplace.connect(safeMinter).listItem(
-          nft.address, 
-          firstTokenId, 
-          "1", 
-          pricePerItem, 
-          OGUNPricePerItem, 
-          false, 
-          false, 
+          nft.address,
+          firstTokenId,
+          "1",
+          pricePerItem,
+          OGUNPricePerItem,
+          false,
+          false,
           "0")
-      ).to.be.revertedWith("item should have a way of payment"); 
+      ).to.be.revertedWith("item should have a way of payment");
     });
 
     it("successfully lists item", async () => {
@@ -160,15 +160,15 @@ describe("marketplace", () => {
     it("reverts when not adding at least one token as way of payment", async () => {
       await expect(
         marketplace.connect(safeMinter).updateListing(
-          nft.address, 
-          firstTokenId, 
-          newPrice, 
-          newOGUNPrice, 
-          false, 
-          false, 
+          nft.address,
+          firstTokenId,
+          newPrice,
+          newOGUNPrice,
+          false,
+          false,
           "100"
         )
-      ).to.be.revertedWith("item should have a way of payment"); 
+      ).to.be.revertedWith("item should have a way of payment");
     });
 
     it("successfully update the item", async () => {
@@ -358,5 +358,85 @@ describe("marketplace", () => {
       expect(await OGUN.balanceOf(safeMinter.address)).to.be.equal(1172500000000000000n); // 1072500000000000000 + rewards (100000000000000000)
       expect(await OGUN.balanceOf(buyer2.address)).to.be.equal(100000000000000000n); // just rewards (100000000000000000)
     });
+  });
+
+  describe("Editions", () => {
+    beforeEach(async () => {
+      const editionNumber = 1;
+
+      await nft.createEdition(50n);
+      await nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber);
+      await nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber);
+
+      await nft.connect(safeMinter).setApprovalForAll(marketplace.address, true);
+      await OGUN.transfer(buyer.address, initialOgunBalance);
+      await OGUN.connect(buyer).approve(marketplace.address, initialOgunBalance);
+
+      nft.connect(safeMinter).setApprovalForAll(marketplace.address, true);
+    });
+
+    it("should create an edition with NFTs", async () => {
+      const editionId = utils.hashMessage(nft.address + "1");
+      await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
+
+      const tokenIdList = await nft.getTokenIdsOfEdition(2);
+      expect(tokenIdList.length).to.be.equal(50);
+    });
+
+    it("should revert in case of overflow max edition qty", async () => {
+      const editionId = utils.hashMessage(nft.address + "2");
+      const editionNumber = 2;
+
+      await nft.createEdition(2n);
+      await nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber);
+      await nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber);
+
+      await expect(
+        nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber)
+      ).to.be.revertedWith("This edition is already full");
+
+      const editionId2 = utils.hashMessage(nft.address + "3");
+      const editionNumber2 = 3;
+
+      await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
+
+      await expect(
+        nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber2)
+      ).to.be.revertedWith("This edition is already full");
+    });
+
+    it("should list an edition", async () => {
+      const editionNumber = 1;
+      await marketplace
+        .connect(safeMinter)
+        .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
+    });
+
+    it("should create an edition with NFTs, list it and sell it", async () => {
+      //Create edition with some NFTs
+      const editionId = utils.hashMessage(nft.address + "2");
+
+      const tx = await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(5n, safeMinter.address, tokenUri, 10);
+
+      const rc = await tx.wait();
+      const event = rc.events.find(event => event.event === 'EditionCreated');
+
+      const [retEditionQuantity, editionNumber] = event.args;
+      await marketplace
+        .connect(safeMinter)
+        .listEdition(nft.address, editionNumber.toString(), pricePerItem, OGUNPricePerItem, true, true, "0");
+
+      //Sell edition
+      await marketplace
+        .connect(buyer)
+        .buyItem(nft.address, 5, safeMinter.address, true);
+    });
+
   });
 });
