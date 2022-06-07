@@ -36,13 +36,13 @@ const sendSignedTransaction = async (signedTransaction) => {
   return await web3.eth.sendSignedTransaction(signedTransaction);
 };
 
-const { FEE_RECIPIENT_ADDRESS, PLATFORM_FEE } = process.env;
+const { FEE_RECIPIENT_ADDRESS, PLATFORM_FEE, OGUN_TOKEN_ADDRESS_MUMBAI, REWARDS_RATE, REWARDS_LIMIT } = process.env;
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const main = async () => {
   console.log("💡 Deploying SoundchainCollectible");
-  const Soundchain721 = await ethers.getContractFactory("Soundchain721");
+  const Soundchain721 = await ethers.getContractFactory("Soundchain721Editions");
   const soundchainNFTDeployTransaction = Soundchain721.getDeployTransaction();
   const soundchainNFTSigned = await getSignedTransaction(
     soundchainNFTDeployTransaction.data
@@ -56,11 +56,14 @@ const main = async () => {
 
   console.log("💡 Deploying Marketplace");
   const MarketplaceFactory = await ethers.getContractFactory(
-    "SoundchainMarketplace"
+    "SoundchainMarketplaceEditions"
   );
   const marketplaceDeployTransaction = MarketplaceFactory.getDeployTransaction(
     FEE_RECIPIENT_ADDRESS,
-    PLATFORM_FEE
+    OGUN_TOKEN_ADDRESS_MUMBAI,
+    PLATFORM_FEE,
+    REWARDS_RATE,
+    REWARDS_LIMIT
   );
   const marketplaceSigned = await getSignedTransaction(
     marketplaceDeployTransaction.data
@@ -74,7 +77,10 @@ const main = async () => {
   const AuctionFactory = await ethers.getContractFactory("SoundchainAuction");
   const auctionDeployTransaction = AuctionFactory.getDeployTransaction(
     FEE_RECIPIENT_ADDRESS,
-    PLATFORM_FEE
+    OGUN_TOKEN_ADDRESS_MUMBAI,
+    PLATFORM_FEE,
+    REWARDS_RATE,
+    REWARDS_LIMIT
   );
   const auctionSigned = await getSignedTransaction(
     auctionDeployTransaction.data
@@ -96,13 +102,27 @@ const main = async () => {
 
   await run("verify:verify", {
     address: marketplaceReceipt.contractAddress,
-    constructorArguments: [FEE_RECIPIENT_ADDRESS, PLATFORM_FEE],
+    constructorArguments: 
+    [
+      FEE_RECIPIENT_ADDRESS,
+      OGUN_TOKEN_ADDRESS_MUMBAI,
+      PLATFORM_FEE,
+      REWARDS_RATE,
+      REWARDS_LIMIT
+    ],
   });
   console.log("✅ Marketplace verified on Etherscan");
 
   await run("verify:verify", {
     address: auctionReceipt.contractAddress,
-    constructorArguments: [FEE_RECIPIENT_ADDRESS, PLATFORM_FEE],
+    constructorArguments:  
+    [
+      FEE_RECIPIENT_ADDRESS,
+      OGUN_TOKEN_ADDRESS_MUMBAI,
+      PLATFORM_FEE,
+      REWARDS_RATE,
+      REWARDS_LIMIT
+    ],
   });
   console.log("✅ Auction verified on Etherscan");
 };
