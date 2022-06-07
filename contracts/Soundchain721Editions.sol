@@ -35,7 +35,16 @@ contract Soundchain721Editions is
 
     constructor() ERC721("SoundchainCollectible", "SC") {}
 
-    function safeMint(
+    function safeMint(address to, string memory _tokenURI, uint8 _royaltyPercentage) public {
+        uint tokenId = _tokenIdCounter.current();
+
+        _safeMint(to, tokenId);
+        _setTokenURI(tokenId, _tokenURI);
+        _tokenIdCounter.increment();
+        setRoyalty(tokenId, to, _royaltyPercentage);
+    }
+    
+    function safeMintToEdition(
         address to,
         string memory _tokenURI,
         uint8 _royaltyPercentage,
@@ -127,64 +136,44 @@ contract Soundchain721Editions is
 
     function createEdition(
         // The number of tokens that can be minted and sold.
-        uint256 quantity,
-        // The id for this edition. --> keccak256(creatorAddress + ID from Backend)
-        bytes32 id
-    ) external {
+        uint256 quantity
+    ) external  returns (uint256 retEditionNumber) {
         require(quantity > 0, "Quantity must be greater than zero (0)");
         editions[nextEditionId] = Edition({
-            id: id,
             quantity: quantity,
             numSold: 0,
             numRemaining: quantity
         });
 
-        emit EditionCreated(id, quantity, nextEditionId);
+        emit EditionCreated(quantity, nextEditionId);
 
         nextEditionId++;
+        return nextEditionId - 1;
     }
 
     function createEditionWithNFTs(
         // The number of tokens that can be minted and sold.
         uint256 editionQuantity,
-        // The id for this edition. --> keccak256(creatorAddress + ID from Backend)
-        bytes32 editionId,
         address to,
         string memory _tokenURI,
         uint8 _royaltyPercentage
-    ) external {
+    ) external  returns (uint256 retEditionNumber) {
         require(editionQuantity > 0, "Quantity must be greater than zero (0)");
 
         editions[nextEditionId] = Edition({
-            id: editionId,
             quantity: editionQuantity,
             numSold: 0,
             numRemaining: editionQuantity
         });
 
         for (uint256 i = 0; i < editionQuantity; i++) {
-            safeMint(to, _tokenURI, _royaltyPercentage, nextEditionId);
+            safeMintToEdition(to, _tokenURI, _royaltyPercentage, nextEditionId);
         }
 
-        emit EditionCreated(editionId, editionQuantity, nextEditionId);
+        emit EditionCreated(editionQuantity, nextEditionId);
 
         nextEditionId++;
-    }
-
-    function getEditionByID(bytes32 id)
-        public
-        view
-        returns (Edition memory retEdition, uint256 editionNumber)
-    {
-        for (
-            uint256 editionCounter = 1;
-            editionCounter < nextEditionId;
-            editionCounter++
-        ) {
-            if (editions[editionCounter].id == id) {
-                return (editions[editionCounter], editionCounter);
-            }
-        }
+        return nextEditionId - 1;
     }
 
     /**
