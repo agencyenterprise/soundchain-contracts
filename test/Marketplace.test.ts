@@ -356,7 +356,6 @@ describe("marketplace", () => {
     });
 
     it("should create an edition with NFTs", async () => {
-      const editionId = utils.hashMessage(nft.address + "1");
       await nft
         .connect(safeMinter)
         .createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
@@ -366,7 +365,6 @@ describe("marketplace", () => {
     });
 
     it("should revert in case of overflow max edition qty", async () => {
-      const editionId = utils.hashMessage(nft.address + "2");
       const editionNumber = 2;
 
       await nft.createEdition(2n);
@@ -377,7 +375,6 @@ describe("marketplace", () => {
         nft.safeMintToEdition(safeMinter.address, tokenUri, 10, editionNumber)
       ).to.be.revertedWith("This edition is already full");
 
-      const editionId2 = utils.hashMessage(nft.address + "3");
       const editionNumber2 = 3;
 
       await nft
@@ -394,11 +391,50 @@ describe("marketplace", () => {
       await marketplace
         .connect(safeMinter)
         .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
+
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
+    });
+
+    it("should cancel listing for an edition", async () => {
+      const editionNumber = 1;
+      await marketplace
+        .connect(safeMinter)
+        .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
+      
+      await marketplace
+        .connect(safeMinter)
+        .cancelEditionListing(nft.address, editionNumber);
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.false;
+    });
+
+    it("should cancel listing for an edition with an NFT Sold", async () => {
+      const tx = await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(5n, safeMinter.address, tokenUri, 10);
+
+      const rc = await tx.wait();
+      const event = rc.events.find(event => event.event === 'EditionCreated');
+
+      const [retEditionQuantity, editionNumber] = event.args;
+
+      await marketplace
+        .connect(safeMinter)
+        .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
+      
+      await marketplace
+        .connect(buyer)
+        .buyItem(nft.address, 5, safeMinter.address, true);
+
+      await marketplace
+        .connect(safeMinter)
+        .cancelEditionListing(nft.address, editionNumber);
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.false;
+
     });
 
     it("should create an edition with NFTs, list it and sell it", async () => {
-      //Create edition with some NFTs
-      const editionId = utils.hashMessage(nft.address + "2");
 
       const tx = await nft
         .connect(safeMinter)
