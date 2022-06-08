@@ -77,8 +77,8 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     mapping(address => mapping(uint256 => mapping(address => Listing)))
         public listings;
 
-    /// @notice NftAddress -> Token ID -> Owner -> Listing item
-    mapping(uint256 => bool) public editionListings;
+    /// @notice NftAddress -> Edition Number -> True/False (Edition listed or not)
+   mapping(address => mapping(uint256 => bool)) public editionListings;
 
     /// @notice Platform fee
     uint16 public platformFee;
@@ -95,7 +95,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         require(listing.quantity > 0, "not listed item");
         _;
     }
-
+    
     modifier notListed(
         address _nftAddress,
         uint256 _tokenId,
@@ -105,9 +105,17 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         require(listing.quantity == 0, "already listed");
         _;
     }
-
-    modifier editionNotListed(uint256 _editionNumber) {
-        require(!editionListings[_editionNumber], "edition already listed");
+    
+    modifier editionNotListed(address nftAddress, uint256 _editionNumber) {
+        require(!editionListings[nftAddress][_editionNumber], "edition already listed");
+        _;
+    }
+    
+    modifier isEditionListed(
+        address _nftAddress,
+        uint256 _editionNumber
+    ) {
+        require(editionListings[_nftAddress][_editionNumber], "edition not listed item");
         _;
     }
 
@@ -149,6 +157,28 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         isListed(_nftAddress, _tokenId, _msgSender())
     {
         _cancelListing(_nftAddress, _tokenId, _msgSender());
+    }
+
+    /// @notice Method for canceling Edition listed NFT
+    function cancelEditionListing(address _nftAddress, uint256 _editionNumber)
+        external
+        nonReentrant
+        isEditionListed(_nftAddress, _editionNumber)
+    {
+        IERC721 nft = IERC721(_nftAddress);
+        IEditions nftEdition = IEditions(_nftAddress);
+
+        uint256[] memory tokensFromEdition = nftEdition
+            .getTokenIdsOfEdition(_editionNumber);
+
+        require(tokensFromEdition.length > 0, "edition has no tokens");
+
+        for (uint256 index = 0; index < tokensFromEdition.length; index++) {
+            if (nft.ownerOf(tokensFromEdition[index]) == _msgSender()) {
+                _cancelListing(_nftAddress, tokensFromEdition[index], _msgSender());
+            }
+        }
+        editionListings[_nftAddress][_editionNumber] = false;
     }
 
     /// @notice Method for updating listed NFT
@@ -395,8 +425,8 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         bool _acceptsMATIC,
         bool _acceptsOGUN,
         uint256 _startingTime
-    ) external editionNotListed(editionNumber) {
-        editionListings[editionNumber] = true;
+    ) external editionNotListed(_nftEditionAddress, editionNumber) {
+        editionListings[_nftEditionAddress][editionNumber] = true;
 
         require(
             (_acceptsMATIC || _acceptsOGUN),
