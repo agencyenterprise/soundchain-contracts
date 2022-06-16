@@ -8,7 +8,8 @@
     "deploy:testnet": "npx hardhat run scripts/deploy.ts --network mumbai",
     "deploy:mainnet": "npx hardhat run scripts/deploy.ts --network polygon",
     "test": "npx hardhat test",
-    "coverage": "npx hardhat coverage"
+    "coverage": "npx hardhat coverage",
+    "generate-types": "npx typechain --target=web3-v1 'abi/contracts/**/*.json'"
   },
   "devDependencies": {
     "@nomiclabs/hardhat-ethers": "^2.0.2",
@@ -18,8 +19,9 @@
     "@nomiclabs/hardhat-web3": "^2.0.0",
     "@openzeppelin/contracts": "^4.3.3",
     "@openzeppelin/test-helpers": "^0.5.15",
-    "@typechain/ethers-v5": "^8.0.3",
-    "@typechain/hardhat": "^3.0.0",
+    "@typechain/ethers-v5": "^7.2.0",
+    "@typechain/hardhat": "^2.3.1",
+    "@typechain/web3-v1": "^4.0.0",
     "@types/chai": "^4.2.22",
     "@types/mocha": "^9.0.0",
     "@types/node": "^16.11.7",
@@ -28,8 +30,9 @@
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.1",
     "hardhat": "^2.6.8",
+    "hardhat-abi-exporter": "^2.9.0",
     "ts-node": "^10.4.0",
-    "typechain": "^6.0.3",
+    "typechain": "^5.2.0",
     "typescript": "^4.5.2"
   },
   "dependencies": {

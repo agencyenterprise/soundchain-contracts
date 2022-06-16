@@ -6,6 +6,8 @@ import "@typechain/hardhat";
 import dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
+import "hardhat-abi-exporter";
+
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 
@@ -30,6 +32,12 @@ const config: HardhatUserConfig = {
   },
   paths: {
     tests: "./test",
+  },
+  abiExporter: {
+    path: "./abi",
+    runOnCompile: true,
+    clear: true,
+    spacing: 2,
   },
   networks: {
     mumbai: {
