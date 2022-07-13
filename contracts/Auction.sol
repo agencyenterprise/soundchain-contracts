@@ -4,6 +4,7 @@ pragma solidity ^0.8.10;
 
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
@@ -14,8 +15,11 @@ import "@openzeppelin/contracts/interfaces/IERC2981.sol";
  * @notice Secondary sale auction contract for NFTs
  */
 contract SoundchainAuction is Ownable, ReentrancyGuard {
+    using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
+    uint256 public rewardsRate;
+    uint256 public rewardsLimit;
 
     event PauseToggled(bool isPaused);
 
@@ -24,6 +28,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         uint256 indexed tokenId,
         address owner,
         uint256 reservePrice,
+        bool isPaymentOGUN,
         uint256 startTimestamp,
         uint256 endTimestamp
     );
@@ -32,6 +37,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         address indexed nftAddress,
         uint256 indexed tokenId,
         uint256 reservePrice,
+        bool isPaymentOGUN,
         uint256 startTime,
         uint256 endTime
     );
@@ -70,6 +76,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     struct Auction {
         address owner;
         uint256 reservePrice;
+        bool isPaymentOGUN;
         uint256 startTime;
         uint256 endTime;
         bool resulted;
@@ -97,6 +104,9 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     /// @notice where to send platform fee funds to
     address payable public platformFeeRecipient;
 
+    /// @notice token option for payment
+    IERC20 public immutable OGUNToken;
+
     /// @notice for switching off auction creations and bids
     bool public isPaused;
 
@@ -105,7 +115,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         _;
     }
 
-    constructor(address payable _platformFeeRecipient, uint16 _platformFee) {
+    constructor(address payable _platformFeeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate, uint256 _rewardsLimit) {
+        OGUNToken = IERC20(_OGUNToken);
         require(
             _platformFeeRecipient != address(0),
             "SoundchainAuction: Invalid Platform Fee Recipient"
@@ -113,6 +124,8 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         platformFee = _platformFee;
         platformFeeRecipient = _platformFeeRecipient;
+        rewardsRate = _rewardsRate;
+        rewardsLimit = _rewardsLimit;
     }
 
     /**
@@ -123,6 +136,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
      @param _nftAddress ERC 721 Address
      @param _tokenId Token ID of the item being auctioned
      @param _reservePrice Item cannot be sold for less than this or minBidIncrement, whichever is higher
+     @param _isPaymentOGUN true if the payment is in OGUN
      @param _startTimestamp Unix epoch in seconds for the auction start time
      @param _endTimestamp Unix epoch in seconds for the auction end time.
      */
@@ -130,6 +144,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         address _nftAddress,
         uint256 _tokenId,
         uint256 _reservePrice,
+        bool _isPaymentOGUN,
         uint256 _startTimestamp,
         uint256 _endTimestamp
     ) external whenNotPaused {
@@ -146,6 +161,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             _nftAddress,
             _tokenId,
             _reservePrice,
+            _isPaymentOGUN,
             _startTimestamp,
             _endTimestamp
         );
@@ -157,8 +173,14 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
      @dev Bids from smart contracts are prohibited to prevent griefing with always reverting receiver
      @param _nftAddress ERC 721 Address
      @param _tokenId Token ID of the item being auctioned
+     @param _bidAmount > 0 if payment is in OGUN
      */
-     function placeBid(address _nftAddress, uint256 _tokenId)
+     function placeBid(
+        address _nftAddress, 
+        uint256 _tokenId,
+        bool _isPaymentOGUN,
+        uint256 _bidAmount
+    )
         external
         payable
         nonReentrant
@@ -173,7 +195,12 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             "bidding outside of the auction window"
         );
 
-        _placeBid(_nftAddress, _tokenId, msg.value);
+        if (_isPaymentOGUN) {
+            _placeBid(_nftAddress, _tokenId, _bidAmount);
+        } else {
+            _placeBid(_nftAddress, _tokenId, msg.value);
+        }
+        
     }
 
     function _placeBid(
@@ -188,18 +215,22 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             "bid cannot be lower than reserve price"
         );
 
-
         HighestBid storage highestBid = highestBids[_nftAddress][_tokenId];
         uint256 minBidRequired = highestBid.bid.add((highestBid.bid * minBidIncrement) / 100);
 
         require(_bidAmount >= minBidRequired, "failed to outbid highest bidder");
+
+        if (auction.isPaymentOGUN) {
+            OGUNToken.safeTransferFrom(_msgSender(), address(this), _bidAmount);
+        } 
 
         if (highestBid.bidder != address(0)) {
             _refundHighestBidder(
                 _nftAddress,
                 _tokenId,
                 highestBid.bidder,
-                highestBid.bid
+                highestBid.bid,
+                auction.isPaymentOGUN
             );
         }
 
@@ -261,11 +292,14 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
                 .div(1e4);
 
             // Send platform fee
-            (bool platformTransferSuccess, ) = platformFeeRecipient.call{
-                value: platformFeeAboveReserve
-            }("");
-            require(platformTransferSuccess, "failed to send platform fee");
-
+            if (auction.isPaymentOGUN) {
+                OGUNToken.safeTransfer(platformFeeRecipient, platformFeeAboveReserve);
+            } else {
+                (bool platformTransferSuccess, ) = platformFeeRecipient.call{
+                    value: platformFeeAboveReserve
+                }("");
+                require(platformTransferSuccess, "failed to send platform fee");
+            }
 
             // Send remaining to designer
             payAmount = winningBid.sub(platformFeeAboveReserve);
@@ -275,23 +309,41 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         (address minter, uint256 royaltyFee) = IERC2981(_nftAddress).royaltyInfo(_tokenId, payAmount);
         if (minter != address(0)) {
-            (bool royaltyTransferSuccess, ) = payable(minter).call{
-                value: royaltyFee
-            }("");
-            require(
-                royaltyTransferSuccess,
-                "failed to send the owner their royalties"
-            );
+            if (auction.isPaymentOGUN) {
+                OGUNToken.safeTransfer(minter, royaltyFee);
+            } else {
+                (bool royaltyTransferSuccess, ) = payable(minter).call{
+                    value: royaltyFee
+                }("");
+                require(
+                    royaltyTransferSuccess,
+                    "failed to send the owner their royalties"
+                );
+            }
             payAmount = payAmount.sub(royaltyFee);
         }
+
         if (payAmount > 0) {
-            (bool ownerTransferSuccess, ) = auction.owner.call{
-                value: payAmount
-            }("");
-            require(
-                ownerTransferSuccess,
-                "failed to send the owner the auction balance"
-            );
+            if (auction.isPaymentOGUN) {
+                OGUNToken.safeTransfer(auction.owner, payAmount);
+
+                uint256 rewardValue = winningBid.mul(rewardsRate).div(1e4);
+                if (rewardValue > rewardsLimit) {
+                    rewardValue = rewardsLimit;
+                }
+                if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
+                    OGUNToken.safeTransfer(auction.owner, rewardValue);
+                    OGUNToken.safeTransfer(winner, rewardValue);
+                }
+            } else {
+                (bool ownerTransferSuccess, ) = auction.owner.call{
+                    value: payAmount
+                }("");
+                require(
+                    ownerTransferSuccess,
+                    "failed to send the owner the auction balance"
+                );
+            }
         }
 
         IERC721(_nftAddress).safeTransferFrom(
@@ -363,10 +415,18 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
      @param _nftAddress ERC 721 Address
      @param _tokenId Token ID of the NFT being auctioned
      @param _reservePrice New Ether reserve price (WEI value)
+     @param _isPaymentOGUN true if the payment is in OGUN
      @param _startTime New start time (unix epoch in seconds)
      @param _endTime New end time (unix epoch in seconds)
      */
-    function updateAuction(address _nftAddress, uint256 _tokenId, uint256 _reservePrice, uint256 _startTime, uint256 _endTime) external {
+    function updateAuction(
+        address _nftAddress, 
+        uint256 _tokenId, 
+        uint256 _reservePrice, 
+        bool _isPaymentOGUN,
+        uint256 _startTime, 
+        uint256 _endTime
+    ) external {
         Auction storage auction = auctions[_nftAddress][_tokenId];
 
         require(_msgSender() == auction.owner, "sender must be item owner");
@@ -390,9 +450,10 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
 
         auction.endTime = _endTime;
         auction.reservePrice = _reservePrice;
+        auction.isPaymentOGUN = _isPaymentOGUN;
         auction.startTime = _startTime;
 
-        emit UpdateAuction(_nftAddress, _tokenId, _reservePrice, _startTime, _endTime);
+        emit UpdateAuction(_nftAddress, _tokenId, _reservePrice, _isPaymentOGUN, _startTime, _endTime);
     }
 
     /**
@@ -403,6 +464,43 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
     function updatePlatformFee(uint256 _platformFee) external onlyOwner {
         platformFee = _platformFee;
         emit UpdatePlatformFee(_platformFee);
+    }
+
+    /**
+     @notice Method for updating rewards rate
+     @dev Only admin
+     @param _rewardsRate rate to be aplyed
+     */
+    function setRewardsRate(uint256 _rewardsRate) 
+        public 
+        onlyOwner 
+    {
+        rewardsRate = _rewardsRate;
+    }
+
+    /**
+     @notice Method for updating rewards limit
+     @dev Only admin
+     @param newLimit Hardcap for rewards
+     */
+    function setRewardsLimit(uint256 newLimit) 
+        external 
+        onlyOwner 
+    {
+        rewardsLimit = newLimit;
+    }
+
+    /**
+     @notice Method for withdraw any leftover OGUN
+     @dev Only admin
+     @param destination Where the OGUN will be sent
+     */
+    function withdraw(address destination) 
+        external 
+        onlyOwner 
+    {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
     }
 
     /**
@@ -432,6 +530,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         returns (
             address _owner,
             uint256 _reservePrice,
+            bool _isPaymentOGUN,
             uint256 _startTime,
             uint256 _endTime,
             bool _resulted
@@ -441,6 +540,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         return (
             auction.owner,
             auction.reservePrice,
+            auction.isPaymentOGUN,
             auction.startTime,
             auction.endTime,
             auction.resulted
@@ -469,6 +569,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
      @param _nftAddress ERC 721 Address
      @param _tokenId Token ID of the NFT being auctioned
      @param _reservePrice Item cannot be sold for less than this or minBidIncrement, whichever is higher
+     @param _isPaymentOGUN true if the payment is in OGUN
      @param _startTimestamp Unix epoch in seconds for the auction start time
      @param _endTimestamp Unix epoch in seconds for the auction end time.
      */
@@ -476,6 +577,7 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         address _nftAddress,
         uint256 _tokenId,
         uint256 _reservePrice,
+        bool _isPaymentOGUN,
         uint256 _startTimestamp,
         uint256 _endTimestamp
     ) private {
@@ -494,29 +596,36 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
         auctions[_nftAddress][_tokenId] = Auction({
             owner: _msgSender(),
             reservePrice: _reservePrice,
+            isPaymentOGUN: _isPaymentOGUN,
             startTime: _startTimestamp,
             endTime: _endTimestamp,
             resulted: false
         });
 
-        emit AuctionCreated(_nftAddress, _tokenId, _msgSender(), _reservePrice, _startTimestamp, _endTimestamp);
+        emit AuctionCreated(_nftAddress, _tokenId, _msgSender(), _reservePrice, _isPaymentOGUN, _startTimestamp, _endTimestamp);
     }
 
     /**
      @notice Used for sending back escrowed funds from a previous bid
      @param _currentHighestBidder Address of the last highest bidder
      @param _currentHighestBid Ether or Mona amount in WEI that the bidder sent when placing their bid
+     @param _isPaymentOGUN true if the payment is in OGUN
      */
     function _refundHighestBidder(
         address _nftAddress,
         uint256 _tokenId,
         address payable _currentHighestBidder,
-        uint256 _currentHighestBid
+        uint256 _currentHighestBid,
+        bool _isPaymentOGUN
     ) private {
-        (bool successRefund, ) = _currentHighestBidder.call{
-            value: _currentHighestBid
-        }("");
-        require(successRefund, "failed to refund previous bidder");
+        if (_isPaymentOGUN) {
+            OGUNToken.safeTransfer(_currentHighestBidder, _currentHighestBid);
+        } else {
+            (bool successRefund, ) = _currentHighestBidder.call{
+                value: _currentHighestBid
+            }("");
+            require(successRefund, "failed to refund previous bidder");
+        }
         emit BidRefunded(
             _nftAddress,
             _tokenId,
@@ -524,7 +633,6 @@ contract SoundchainAuction is Ownable, ReentrancyGuard {
             _currentHighestBid
         );
     }
-
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;
