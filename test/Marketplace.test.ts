@@ -13,9 +13,11 @@ import {
 describe("marketplace", () => {
   const firstTokenId = "0";
   const secondTokenId = "1";
+  const overPricedTokenId = "2";
   const platformFee: any = "250"; // marketplace platform fee: 2.5%
   const pricePerItem = "1000000000000000000";
   const OGUNPricePerItem = "1000000000000000000";
+  const OGUNOverPricePerItem = "15000000000000000000000"; //15k OGUN
   const newPrice = "500000000000000000";
   const newOGUNPrice = "500000000000000000";
   const tokenUri = "ipfs";
@@ -27,6 +29,7 @@ describe("marketplace", () => {
     safeMinter: SignerWithAddress,
     buyer: SignerWithAddress,
     buyer2: SignerWithAddress,
+    overPriceBuyer: SignerWithAddress,
     nft: Soundchain721Editions,
     feeAddress: SignerWithAddress,
     OGUN: ERC20,
@@ -408,11 +411,15 @@ describe("marketplace", () => {
 
     it("should list an edition", async () => {
       const editionNumber = 1;
-      await marketplace
-        .connect(safeMinter)
-        .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
+      await expect(
+        marketplace
+          .connect(safeMinter)
+          .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0")
+      )
+        .to.emit(marketplace, 'EditionListed')
+        .withArgs(nft.address, editionNumber)
 
-      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;      
     });
 
     it("should cancel listing for an edition", async () => {
@@ -422,10 +429,13 @@ describe("marketplace", () => {
         .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
       expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
       
-      await marketplace
+      await expect(
+        marketplace
         .connect(safeMinter)
-        .cancelEditionListing(nft.address, editionNumber);
-      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.false;
+        .cancelEditionListing(nft.address, editionNumber)
+      )
+        .to.emit(marketplace, "EditionCanceled")
+        .withArgs(nft.address, editionNumber);
     });
 
     it("should cancel listing for an edition with an NFT Sold", async () => {
@@ -447,11 +457,13 @@ describe("marketplace", () => {
         .connect(buyer)
         .buyItem(nft.address, 5, safeMinter.address, true);
 
-      await marketplace
+      await expect(
+        marketplace
         .connect(safeMinter)
-        .cancelEditionListing(nft.address, editionNumber);
-      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.false;
-
+        .cancelEditionListing(nft.address, editionNumber)
+      )
+        .to.emit(marketplace, "EditionCanceled")
+        .withArgs(nft.address, editionNumber);      
     });
 
     it("should create an edition with NFTs, list it and sell it", async () => {
@@ -464,9 +476,14 @@ describe("marketplace", () => {
       const event = rc.events.find(event => event.event === 'EditionCreated');
 
       const [retEditionQuantity, editionNumber] = event.args;
-      await marketplace
-        .connect(safeMinter)
-        .listEdition(nft.address, editionNumber.toString(), pricePerItem, OGUNPricePerItem, true, true, "0");
+
+      await expect(
+        marketplace
+          .connect(safeMinter)
+          .listEdition(nft.address, editionNumber.toString(), pricePerItem, OGUNPricePerItem, true, true, "0")
+      )
+        .to.emit(marketplace, 'EditionListed')
+        .withArgs(nft.address, editionNumber)
 
       //Sell edition
       await marketplace
