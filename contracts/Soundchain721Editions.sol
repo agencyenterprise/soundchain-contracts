@@ -57,6 +57,7 @@ contract Soundchain721Editions is
             editions[editionNumber].numSold < editions[editionNumber].quantity,
             "This edition is already full"
         );
+        require(editions[editionNumber].owner == msg.sender, "Not owner of edition");
 
         uint256 tokenId = _tokenIdCounter.current();
 

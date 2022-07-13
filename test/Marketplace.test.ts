@@ -597,6 +597,16 @@ describe("marketplace", () => {
       ).to.be.revertedWith("This edition is already full");
     });
 
+    it("should create an edition and revert if other mints", async () => {
+      await nft.connect(safeMinter).createEdition(10n);
+
+      await expect(
+        nft
+          .connect(buyer2)
+          .safeMintToEditionQuantity(safeMinter.address, tokenUri, 10, 2, 100)
+      ).to.be.revertedWith("Not owner of edition");
+    });
+
     it("should revert in case of overflow max edition qty", async () => {
       const editionNumber = 2;
 
