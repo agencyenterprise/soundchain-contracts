@@ -411,20 +411,15 @@ describe("marketplace", () => {
 
     it("should list an edition", async () => {
       const editionNumber = 1;
-      const listTx = await marketplace
-        .connect(safeMinter)
-        .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
+      await expect(
+        marketplace
+          .connect(safeMinter)
+          .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0")
+      )
+        .to.emit(marketplace, 'EditionListed')
+        .withArgs(nft.address, editionNumber)
 
-      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
-
-      const listRc = await listTx.wait();
-      const listedEvent = listRc.events.find(event => event.event === 'EditionListed');
-
-      expect(listedEvent).to.not.be.undefined;
-
-      const [listedEventContractAddress, listedEventEditionNumber] = listedEvent.args;
-      expect(listedEventContractAddress).to.eq(nft.address);
-      expect(listedEventEditionNumber).to.eq(editionNumber);
+      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;      
     });
 
     it("should cancel listing for an edition", async () => {
@@ -434,19 +429,13 @@ describe("marketplace", () => {
         .listEdition(nft.address, editionNumber, pricePerItem, OGUNPricePerItem, true, true, "0");
       expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.true;
       
-      const cancelTx = await marketplace
+      await expect(
+        marketplace
         .connect(safeMinter)
-        .cancelEditionListing(nft.address, editionNumber);
-      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.false;
-
-      const cancelRc = await cancelTx.wait();
-      const cancelEvent = cancelRc.events.find(event => event.event === 'EditionCanceled');
-
-      expect(cancelEvent).to.not.be.undefined;
-
-      const [cancelEventContractAddress, cancelEventEditionNumber] = cancelEvent.args;
-      expect(cancelEventContractAddress).to.eq(nft.address);
-      expect(cancelEventEditionNumber).to.eq(editionNumber);
+        .cancelEditionListing(nft.address, editionNumber)
+      )
+        .to.emit(marketplace, "EditionCanceled")
+        .withArgs(nft.address, editionNumber);
     });
 
     it("should cancel listing for an edition with an NFT Sold", async () => {
@@ -468,19 +457,13 @@ describe("marketplace", () => {
         .connect(buyer)
         .buyItem(nft.address, 5, safeMinter.address, true);
 
-      const cancelTx = await marketplace
+      await expect(
+        marketplace
         .connect(safeMinter)
-        .cancelEditionListing(nft.address, editionNumber);
-      expect(await marketplace.editionListings(nft.address, editionNumber)).to.be.false;
-
-      const cancelRc = await cancelTx.wait();
-      const cancelEvent = cancelRc.events.find(event => event.event === 'EditionCanceled');
-
-      expect(cancelEvent).to.not.be.undefined;
-
-      const [cancelEventContractAddress, cancelEventEditionNumber] = cancelEvent.args;
-      expect(cancelEventContractAddress).to.eq(nft.address);
-      expect(cancelEventEditionNumber).to.eq(editionNumber);
+        .cancelEditionListing(nft.address, editionNumber)
+      )
+        .to.emit(marketplace, "EditionCanceled")
+        .withArgs(nft.address, editionNumber);      
     });
 
     it("should create an edition with NFTs, list it and sell it", async () => {
@@ -493,18 +476,14 @@ describe("marketplace", () => {
       const event = rc.events.find(event => event.event === 'EditionCreated');
 
       const [retEditionQuantity, editionNumber] = event.args;
-      const listTx = await marketplace
-        .connect(safeMinter)
-        .listEdition(nft.address, editionNumber.toString(), pricePerItem, OGUNPricePerItem, true, true, "0");
 
-      const listRc = await listTx.wait();
-      const listedEvent = listRc.events.find(event => event.event === 'EditionListed');
-
-      expect(listedEvent).to.not.be.undefined;
-
-      const [listedEventContractAddress, listedEventEditionNumber] = listedEvent.args;
-      expect(listedEventContractAddress).to.eq(nft.address);
-      expect(listedEventEditionNumber).to.eq(editionNumber);
+      await expect(
+        marketplace
+          .connect(safeMinter)
+          .listEdition(nft.address, editionNumber.toString(), pricePerItem, OGUNPricePerItem, true, true, "0")
+      )
+        .to.emit(marketplace, 'EditionListed')
+        .withArgs(nft.address, editionNumber)
 
       //Sell edition
       await marketplace
