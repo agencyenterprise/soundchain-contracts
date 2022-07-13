@@ -72,6 +72,18 @@ contract Soundchain721Editions is
         tokenToEdition[tokenId] = editionNumber;
     }
 
+    function safeMintToEditionQuantity(
+        address to,
+        string memory _tokenURI,
+        uint8 _royaltyPercentage,
+        uint256 editionNumber,
+        uint16 quantity
+    ) public {
+        for (uint256 i = 0; i < quantity; i++) {
+            safeMintToEdition(to, _tokenURI, _royaltyPercentage, editionNumber);
+        }
+    }
+
     function setRoyalty(
         uint256 tokenId,
         address creator,

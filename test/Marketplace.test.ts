@@ -7,7 +7,7 @@ import {
   SoundchainMarketplaceEditions,
   SoundchainMarketplaceEditions__factory,
   Soundchain721Editions,
-  Soundchain721Editions__factory
+  Soundchain721Editions__factory,
 } from "../typechain";
 
 describe("marketplace", () => {
@@ -36,7 +36,8 @@ describe("marketplace", () => {
     marketplace: SoundchainMarketplaceEditions;
 
   beforeEach(async () => {
-    [owner, safeMinter, buyer, feeAddress, buyer2, overPriceBuyer] = await ethers.getSigners();
+    [owner, safeMinter, buyer, feeAddress, buyer2, overPriceBuyer] =
+      await ethers.getSigners();
 
     const SoundchainCollectible: Soundchain721Editions__factory =
       await ethers.getContractFactory("Soundchain721Editions");
@@ -70,7 +71,16 @@ describe("marketplace", () => {
   describe("list item", () => {
     it("reverts when not owning NFT", async () => {
       expect(
-        marketplace.listItem(nft.address, firstTokenId, "1", pricePerItem, OGUNPricePerItem, true, true, "0")
+        marketplace.listItem(
+          nft.address,
+          firstTokenId,
+          "1",
+          pricePerItem,
+          OGUNPricePerItem,
+          true,
+          true,
+          "0"
+        )
       ).to.be.revertedWith("not owning item");
     });
 
@@ -78,7 +88,16 @@ describe("marketplace", () => {
       expect(
         marketplace
           .connect(safeMinter)
-          .listItem(nft.address, firstTokenId, "1", pricePerItem, OGUNPricePerItem, true, true, "0")
+          .listItem(
+            nft.address,
+            firstTokenId,
+            "1",
+            pricePerItem,
+            OGUNPricePerItem,
+            true,
+            true,
+            "0"
+          )
       ).to.be.revertedWith("item not approved");
     });
 
@@ -87,15 +106,18 @@ describe("marketplace", () => {
         .connect(safeMinter)
         .setApprovalForAll(marketplace.address, true);
       await expect(
-        marketplace.connect(safeMinter).listItem(
-          nft.address,
-          firstTokenId,
-          "1",
-          pricePerItem,
-          OGUNPricePerItem,
-          false,
-          false,
-          "0")
+        marketplace
+          .connect(safeMinter)
+          .listItem(
+            nft.address,
+            firstTokenId,
+            "1",
+            pricePerItem,
+            OGUNPricePerItem,
+            false,
+            false,
+            "0"
+          )
       ).to.be.revertedWith("item should have a way of payment");
     });
 
@@ -105,7 +127,16 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, OGUNPricePerItem, true, true, "0");
+        .listItem(
+          nft.address,
+          firstTokenId,
+          "1",
+          pricePerItem,
+          OGUNPricePerItem,
+          true,
+          true,
+          "0"
+        );
     });
   });
 
@@ -116,7 +147,16 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, OGUNPricePerItem, true, true, "0");
+        .listItem(
+          nft.address,
+          firstTokenId,
+          "1",
+          pricePerItem,
+          OGUNPricePerItem,
+          true,
+          true,
+          "0"
+        );
     });
 
     it("reverts when item is not listed", async () => {
@@ -145,39 +185,74 @@ describe("marketplace", () => {
         .setApprovalForAll(marketplace.address, true);
       await marketplace
         .connect(safeMinter)
-        .listItem(nft.address, firstTokenId, "1", pricePerItem, OGUNPricePerItem, true, true, "0");
+        .listItem(
+          nft.address,
+          firstTokenId,
+          "1",
+          pricePerItem,
+          OGUNPricePerItem,
+          true,
+          true,
+          "0"
+        );
     });
 
     it("reverts when item is not listed", async () => {
       await expect(
-        marketplace.updateListing(nft.address, secondTokenId, newPrice, newOGUNPrice, true, true, "100")
+        marketplace.updateListing(
+          nft.address,
+          secondTokenId,
+          newPrice,
+          newOGUNPrice,
+          true,
+          true,
+          "100"
+        )
       ).to.be.revertedWith("not listed item");
     });
 
     it("reverts when not owning the item", async () => {
       await expect(
-        marketplace.updateListing(nft.address, firstTokenId, newPrice, newOGUNPrice, true, true, "100")
+        marketplace.updateListing(
+          nft.address,
+          firstTokenId,
+          newPrice,
+          newOGUNPrice,
+          true,
+          true,
+          "100"
+        )
       ).to.be.revertedWith("not listed item"); // TODO: investigate if there is another way to have the mapping without the owner, here should be not owning item
     });
 
     it("reverts when not adding at least one token as way of payment", async () => {
       await expect(
-        marketplace.connect(safeMinter).updateListing(
-          nft.address,
-          firstTokenId,
-          newPrice,
-          newOGUNPrice,
-          false,
-          false,
-          "100"
-        )
+        marketplace
+          .connect(safeMinter)
+          .updateListing(
+            nft.address,
+            firstTokenId,
+            newPrice,
+            newOGUNPrice,
+            false,
+            false,
+            "100"
+          )
       ).to.be.revertedWith("item should have a way of payment");
     });
 
     it("successfully update the item", async () => {
       await marketplace
         .connect(safeMinter)
-        .updateListing(nft.address, firstTokenId, newPrice, newOGUNPrice, true, true, "100");
+        .updateListing(
+          nft.address,
+          firstTokenId,
+          newPrice,
+          newOGUNPrice,
+          true,
+          true,
+          "100"
+        );
       const { pricePerItem, startingTime } = await marketplace.listings(
         nft.address,
         firstTokenId,
@@ -482,10 +557,44 @@ describe("marketplace", () => {
       await nft
         .connect(safeMinter)
         .createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
-      console.log(safeMinter.address)
       const tokenIdList = await nft.getTokenIdsOfEdition(2);
       expect(tokenIdList.length).to.be.equal(50);
       expect((await nft.editions(2)).owner).to.be.equal(safeMinter.address);
+    });
+
+    it("should create an edition and mint after", async () => {
+      await nft.connect(safeMinter).createEdition(500n);
+
+      await nft.safeMintToEditionQuantity(
+        safeMinter.address,
+        tokenUri,
+        10,
+        2,
+        100
+      );
+      await nft.safeMintToEditionQuantity(
+        safeMinter.address,
+        tokenUri,
+        10,
+        2,
+        100
+      );
+      await nft.safeMintToEditionQuantity(
+        safeMinter.address,
+        tokenUri,
+        10,
+        2,
+        100
+      );
+      expect((await nft.getTokenIdsOfEdition(2)).length).to.be.equal(300);
+    });
+
+    it("should create an edition and revert if mints more than quantity", async () => {
+      await nft.connect(safeMinter).createEdition(10n);
+
+      await expect(
+        nft.safeMintToEditionQuantity(safeMinter.address, tokenUri, 10, 2, 100)
+      ).to.be.revertedWith("This edition is already full");
     });
 
     it("should revert in case of overflow max edition qty", async () => {
