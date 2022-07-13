@@ -12,13 +12,16 @@ interface IEditions {
         uint256 numSold;
         // The number of tokens still available.
         uint256 numRemaining;
+        // Owner of the edition.
+        address owner;
     }
 
     // ============ Events ============
 
     event EditionCreated(
         uint256 quantity,
-        uint256 indexed editionNumber
+        uint256 indexed editionNumber,
+        address owner
     );
 
     function createEdition(

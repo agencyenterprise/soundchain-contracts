@@ -35,7 +35,6 @@ contract Soundchain721Editions is
 
     constructor() ERC721("SoundchainCollectible", "SC") {
         nextEditionId.increment(); //lets start at 1 ;)
-
     }
 
     function safeMint(address to, string memory _tokenURI, uint8 _royaltyPercentage) public {
@@ -46,7 +45,7 @@ contract Soundchain721Editions is
         _tokenIdCounter.increment();
         setRoyalty(tokenId, to, _royaltyPercentage);
     }
-    
+
     function safeMintToEdition(
         address to,
         string memory _tokenURI,
@@ -145,10 +144,11 @@ contract Soundchain721Editions is
         editions[nextEditionId.current()] = Edition({
             quantity: quantity,
             numSold: 0,
-            numRemaining: quantity
+            numRemaining: quantity,
+            owner: msg.sender
         });
 
-        emit EditionCreated(quantity, nextEditionId.current());
+        emit EditionCreated(quantity, nextEditionId.current(), msg.sender);
 
         nextEditionId.increment();
         return nextEditionId.current() - 1;
@@ -166,14 +166,15 @@ contract Soundchain721Editions is
         editions[nextEditionId.current()] = Edition({
             quantity: editionQuantity,
             numSold: 0,
-            numRemaining: editionQuantity
+            numRemaining: editionQuantity,
+            owner: msg.sender
         });
 
         for (uint256 i = 0; i < editionQuantity; i++) {
             safeMintToEdition(to, _tokenURI, _royaltyPercentage, nextEditionId.current());
         }
 
-        emit EditionCreated(editionQuantity, nextEditionId.current());
+        emit EditionCreated(editionQuantity, nextEditionId.current(), msg.sender);
 
         nextEditionId.increment();
         return nextEditionId.current() - 1;

@@ -7,22 +7,22 @@ import {
   LiquidityPoolRewards,
   LiquidityPoolRewards__factory,
   SoundchainOGUN20,
-  SoundchainOGUN20__factory
-} from "../typechain-types";
+  SoundchainOGUN20__factory,
+} from "../typechain";
 
 describe("Staking", () => {
   let owner: SignerWithAddress,
-    user1: SignerWithAddress, 
+    user1: SignerWithAddress,
     user2: SignerWithAddress,
     user3: SignerWithAddress,
     user4: SignerWithAddress,
     token: SoundchainOGUN20,
     stake: LiquidityPoolRewards;
 
-    const transfer1m = ethers.utils.parseEther("1000000");
-    const transfer500k = ethers.utils.parseEther("500000");
-    const transfer20m = ethers.utils.parseEther("20000000");
-    
+  const transfer1m = ethers.utils.parseEther("1000000");
+  const transfer500k = ethers.utils.parseEther("500000");
+  const transfer20m = ethers.utils.parseEther("20000000");
+
     beforeEach(async () => {
       [owner, user1, user2, user3, user4] = await ethers.getSigners();
       const tokenContract: SoundchainOGUN20__factory = await ethers.getContractFactory("SoundchainOGUN20");
@@ -51,40 +51,50 @@ describe("Staking", () => {
           stake.callStatic.getUpdatedBalanceOf(user1.address)
         ).to.be.revertedWith("address hasn't stake any tokens yet");
       });
-      
+
       it("should no increace balance with rewards if there is no new blocks in network", async function () {
         await stake.connect(user1).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(
+          user1.address
+        );
         expect(rewards).to.eq(0);
       });
 
       it("x1 - should increase rewards balance of user 1 by 20", async function () {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
-        expect(ethers.utils.formatEther(rewards)).to.eq('20.0');
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user1.address
+        );
+        expect(ethers.utils.formatEther(rewards)).to.eq("20.0");
       });
 
       it("x23 - should increase rewards balance of user 1 by 460", async function () {
         await stake.connect(user1).stake(transfer1m);
-        await network.provider.send('hardhat_mine', ['0x17']);
-        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
-        expect(ethers.utils.formatEther(rewards)).to.eq('460.0');
+        await network.provider.send("hardhat_mine", ["0x17"]);
+        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(
+          user1.address
+        );
+        expect(ethers.utils.formatEther(rewards)).to.eq("460.0");
       });
 
       it("x23 - balance of lp tokens should be the same as initial stake", async function () {
         await stake.connect(user1).stake(transfer1m);
-        await network.provider.send('hardhat_mine', ['0x17']);
-        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
-        expect(ethers.utils.formatEther(stakedLP)).to.eq('1000000.0');
+        await network.provider.send("hardhat_mine", ["0x17"]);
+        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(
+          user1.address
+        );
+        expect(ethers.utils.formatEther(stakedLP)).to.eq("1000000.0");
       });
 
       it("x1000000 - balance of rewards should be 19997640", async function () {
         //+10 previous blocks from beforeEach function
         await stake.connect(user1).stake(transfer1m);
-        await network.provider.send('hardhat_mine', ['0xf4240']); // + 1000000 blocks
-        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
-        expect(ethers.utils.formatEther(rewards)).to.eq('19999800.0'); // 999990 x 20
+        await network.provider.send("hardhat_mine", ["0xf4240"]); // + 1000000 blocks
+        const [stakedLP, rewards] = await stake.callStatic.getUpdatedBalanceOf(
+          user1.address
+        );
+        expect(ethers.utils.formatEther(rewards)).to.eq("19999800.0"); // 999990 x 20
       });
     });
 
@@ -93,16 +103,20 @@ describe("Staking", () => {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
         await stake.connect(user3).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user2.address);
-        expect(ethers.utils.formatEther(rewards)).to.eq('10.0');
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user2.address
+        );
+        expect(ethers.utils.formatEther(rewards)).to.eq("10.0");
       });
-      
+
       it("x2 - should increase rewards balance of user 1 by 30", async function () {
         await stake.connect(user1).stake(transfer1m);
         await stake.connect(user2).stake(transfer1m);
         await stake.connect(user3).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
-        expect(ethers.utils.formatEther(rewards)).to.eq('30.0');
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user1.address
+        );
+        expect(ethers.utils.formatEther(rewards)).to.eq("30.0");
       });
 
       it("x3 - should increase rewards balance of user 1 by 36.666666", async function () {
@@ -110,9 +124,11 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer1m); //user 1 = 20
         await stake.connect(user3).stake(transfer1m); // user 1 = 30, user 2 =10
         await stake.connect(user4).stake(transfer1m); // user 1  = 36.666, user 2 = 16.6666, user 3= 6.6666
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user1.address
+        );
         const etherNumber = ethers.utils.formatEther(rewards);
-        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('36.666667');
+        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq("36.666667");
       });
 
       it("x3 - should increase rewards balance of user 1 by 36.666666", async function () {
@@ -120,29 +136,35 @@ describe("Staking", () => {
         await stake.connect(user2).stake(transfer1m); //user 1 = 20
         await stake.connect(user3).stake(transfer1m); // user 1 = 30, user 2 =10
         await stake.connect(user4).stake(transfer1m); // user 1  = 36.666, user 2 = 16.6666, user 3= 6.6666
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user1.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user1.address
+        );
         const etherNumber = ethers.utils.formatEther(rewards);
-        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('36.666667');
+        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq("36.666667");
       });
 
       it("x3 - should increase rewards balance of user 2 by 16.666667", async function () {
         await stake.connect(user1).stake(transfer1m);
-        await stake.connect(user2).stake(transfer1m); 
-        await stake.connect(user3).stake(transfer1m); 
+        await stake.connect(user2).stake(transfer1m);
+        await stake.connect(user3).stake(transfer1m);
         await stake.connect(user4).stake(transfer1m);
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user2.address);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user2.address
+        );
         const etherNumber = ethers.utils.formatEther(rewards);
-        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('16.666667');
+        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq("16.666667");
       });
 
       it("x3 - should increase rewards balance of user 3 by 6.666667", async function () {
         await stake.connect(user1).stake(transfer1m);
-        await stake.connect(user2).stake(transfer1m); 
-        await stake.connect(user3).stake(transfer1m); 
-        await stake.connect(user4).stake(transfer1m); 
-        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(user3.address);
+        await stake.connect(user2).stake(transfer1m);
+        await stake.connect(user3).stake(transfer1m);
+        await stake.connect(user4).stake(transfer1m);
+        const [stakedLP, rewards] = await stake.callStatic.getBalanceOf(
+          user3.address
+        );
         const etherNumber = ethers.utils.formatEther(rewards);
-        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq('6.666667');
+        expect(Number.parseFloat(etherNumber).toFixed(6)).to.eq("6.666667");
       });
     });
 
@@ -179,4 +201,3 @@ describe("Staking", () => {
 
   });
 });
-
