@@ -3,6 +3,7 @@ node_modules
 /artifacts
 /cache
 /.openzeppelin
-typechain-types
+types
 coverage
 coverage.json
+abi
