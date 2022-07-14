@@ -555,7 +555,7 @@ describe("marketplace", () => {
       expect((await nft.editions(2)).owner).to.be.equal(safeMinter.address);
     });
 
-    it("should create an edition with NFTs and set royalty", async () => {
+    it("should create an edition with NFTs and set royalty and token uri", async () => {
       const tx = await nft
         .connect(safeMinter)
         .createEditionWithNFTs(10n, safeMinter.address, tokenUri, 10);
@@ -563,10 +563,22 @@ describe("marketplace", () => {
       const event = rc.events.find((event) => event.event === "Transfer");
       const tokenId = event.args['tokenId']
       const [creatorAddress, royalties] = await nft
-        .connect(safeMinter)
         .royaltyInfo(tokenId, 1000);
       expect(creatorAddress).to.be.equal(safeMinter.address);
       expect(royalties).to.be.equal("100");
+      expect(await nft.tokenURI(tokenId)).to.be.equal(tokenUri);
+    });
+
+    it("should create an edition with NFTs and set token uri", async () => {
+      const newTokenURI = "https://newTokenURI.com";
+      const tx = await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(10n, safeMinter.address, newTokenURI, 10);
+      const rc = await tx.wait();
+      const event = rc.events.find((event) => event.event === "Transfer");
+      const tokenId = event.args["tokenId"];
+
+      expect(await nft.tokenURI(tokenId)).to.be.equal(newTokenURI);
     });
 
     it("should create an edition and mint after", async () => {
