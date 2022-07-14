@@ -30,7 +30,7 @@ contract Soundchain721Editions is ERC721ABurnable, Ownable, IERC2981, IEditions 
         _contractURI = contractURI_;
     }
 
-    function contractURI() public view onlyOwner returns (string memory) {
+    function contractURI() public view returns (string memory) {
         return _contractURI;
     }
 
