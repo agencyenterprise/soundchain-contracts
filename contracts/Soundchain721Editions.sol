@@ -1,18 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/utils/Counters.sol";
-import "@openzeppelin/contracts/interfaces/IERC2981.sol";
-import "./IEditions.sol";
 import "erc721a/contracts/extensions/ERC721ABurnable.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
+import "./IEditions.sol";
 
-
-contract Soundchain721Editions is ERC721ABurnable, IERC2981, IEditions {
+contract Soundchain721Editions is ERC721ABurnable, Ownable, IERC2981, IEditions {
     using Counters for Counters.Counter;
 
     mapping(uint256 => address) public royaltyReceivers;
     mapping(uint256 => uint8) public royaltyPercentage;
     mapping(uint256 => string) private _tokenURIs;
+    string private _contractURI;
 
     // ============ Mutable Storage ============
     // Mapping of edition id to descriptive data.
@@ -22,8 +23,15 @@ contract Soundchain721Editions is ERC721ABurnable, IERC2981, IEditions {
     // Mapping of edition id to token id.
     Counters.Counter private nextEditionId;
 
-    constructor() ERC721A("SoundchainCollectible", "SC") {
+    constructor(string memory contractURI_)
+        ERC721A("SoundchainCollectible", "SC")
+    {
         nextEditionId.increment(); //lets start at 1 ;)
+        _contractURI = contractURI_;
+    }
+
+    function contractURI() public view onlyOwner returns (string memory) {
+        return _contractURI;
     }
 
     function safeMint(
@@ -106,9 +114,7 @@ contract Soundchain721Editions is ERC721ABurnable, IERC2981, IEditions {
         return super.tokenURI(tokenId);
     }
 
-    function _setTokenURI(uint256 tokenId, string memory _tokenURI)
-        internal
-    {
+    function _setTokenURI(uint256 tokenId, string memory _tokenURI) internal {
         require(
             _exists(tokenId),
             "ERC721URIStorage: URI set of nonexistent token"
