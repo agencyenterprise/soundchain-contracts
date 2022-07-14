@@ -2,9 +2,11 @@ import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { expect } from "chai";
 import { ethers } from "hardhat";
 import {
-  ERC20, Soundchain721Editions,
-  Soundchain721Editions__factory, SoundchainMarketplaceEditions,
-  SoundchainMarketplaceEditions__factory
+  ERC20,
+  Soundchain721Editions,
+  Soundchain721Editions__factory,
+  SoundchainMarketplaceEditions,
+  SoundchainMarketplaceEditions__factory,
 } from "../typechain";
 
 describe("marketplace", () => {
@@ -525,16 +527,12 @@ describe("marketplace", () => {
       const editionNumber = 1;
 
       await nft.connect(safeMinter).createEdition(50n, safeMinter.address, 10);
-      await nft.connect(safeMinter).safeMintToEdition(
-        safeMinter.address,
-        tokenUri,
-        editionNumber
-      );
-      await nft.connect(safeMinter).safeMintToEdition(
-        safeMinter.address,
-        tokenUri,
-        editionNumber
-      );
+      await nft
+        .connect(safeMinter)
+        .safeMintToEdition(safeMinter.address, tokenUri, editionNumber);
+      await nft
+        .connect(safeMinter)
+        .safeMintToEdition(safeMinter.address, tokenUri, editionNumber);
 
       await nft
         .connect(safeMinter)
@@ -548,7 +546,7 @@ describe("marketplace", () => {
       nft.connect(safeMinter).setApprovalForAll(marketplace.address, true);
     });
 
-    it("should create an edition with NFTs", async () => {
+    it("should create an edition with NFTs with big number", async () => {
       await nft
         .connect(safeMinter)
         .createEditionWithNFTs(350n, safeMinter.address, tokenUri, 10);
@@ -557,27 +555,32 @@ describe("marketplace", () => {
       expect((await nft.editions(2)).owner).to.be.equal(safeMinter.address);
     });
 
+    it("should create an edition with NFTs and set royalty", async () => {
+      const tx = await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(10n, safeMinter.address, tokenUri, 10);
+      const rc = await tx.wait();
+      const event = rc.events.find((event) => event.event === "Transfer");
+      const tokenId = event.args['tokenId']
+      const [creatorAddress, royalties] = await nft
+        .connect(safeMinter)
+        .royaltyInfo(tokenId, 1000);
+      expect(creatorAddress).to.be.equal(safeMinter.address);
+      expect(royalties).to.be.equal("100");
+    });
+
     it("should create an edition and mint after", async () => {
       await nft.connect(safeMinter).createEdition(500n, safeMinter.address, 10);
 
-      await nft.connect(safeMinter).safeMintToEditionQuantity(
-        safeMinter.address,
-        tokenUri,
-        2,
-        100
-      );
-      await nft.connect(safeMinter).safeMintToEditionQuantity(
-        safeMinter.address,
-        tokenUri,
-        2,
-        100
-      );
-      await nft.connect(safeMinter).safeMintToEditionQuantity(
-        safeMinter.address,
-        tokenUri,
-        2,
-        100
-      );
+      await nft
+        .connect(safeMinter)
+        .safeMintToEditionQuantity(safeMinter.address, tokenUri, 2, 100);
+      await nft
+        .connect(safeMinter)
+        .safeMintToEditionQuantity(safeMinter.address, tokenUri, 2, 100);
+      await nft
+        .connect(safeMinter)
+        .safeMintToEditionQuantity(safeMinter.address, tokenUri, 2, 100);
       expect((await nft.getTokenIdsOfEdition(2)).length).to.be.equal(300);
     });
 
@@ -585,7 +588,9 @@ describe("marketplace", () => {
       await nft.connect(safeMinter).createEdition(10n, safeMinter.address, 10);
 
       await expect(
-        nft.connect(safeMinter).safeMintToEditionQuantity(safeMinter.address, tokenUri, 2, 100)
+        nft
+          .connect(safeMinter)
+          .safeMintToEditionQuantity(safeMinter.address, tokenUri, 2, 100)
       ).to.be.revertedWith("This edition is already full");
     });
 
@@ -603,16 +608,12 @@ describe("marketplace", () => {
       const editionNumber = 2;
 
       await nft.createEdition(2n, safeMinter.address, 10);
-      await nft.connect(safeMinter).safeMintToEdition(
-        safeMinter.address,
-        tokenUri,
-        editionNumber
-      );
-      await nft.connect(safeMinter).safeMintToEdition(
-        safeMinter.address,
-        tokenUri,
-        editionNumber
-      );
+      await nft
+        .connect(safeMinter)
+        .safeMintToEdition(safeMinter.address, tokenUri, editionNumber);
+      await nft
+        .connect(safeMinter)
+        .safeMintToEdition(safeMinter.address, tokenUri, editionNumber);
 
       await expect(
         nft.safeMintToEdition(safeMinter.address, tokenUri, editionNumber)

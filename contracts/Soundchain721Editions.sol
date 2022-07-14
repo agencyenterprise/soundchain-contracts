@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "./IEditions.sol";
 import "erc721a/contracts/ERC721A.sol";
 
+
 contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
     using Counters for Counters.Counter;
 
@@ -52,7 +53,6 @@ contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
 
         _safeMint(to, 1);
         _setTokenURI(_nextTokenId() - 1, _tokenURI);
-
         editions[editionNumber].numSold++;
         editions[editionNumber].numRemaining =
             editions[editionNumber].quantity -
@@ -151,7 +151,7 @@ contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
     {
         uint8 percentage;
         address creatorAddress;
-        if (tokenToEdition[tokenId] > 0) {
+        if (editions[tokenToEdition[tokenId]].quantity > 0) {
             percentage = editions[tokenToEdition[tokenId]].royaltyPercentage;
             creatorAddress = editions[tokenToEdition[tokenId]].royaltyReceiver;
         } else {
