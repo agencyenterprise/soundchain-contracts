@@ -19,7 +19,7 @@ describe("marketplace", () => {
   const OGUNOverPricePerItem = "15000000000000000000000"; //15k OGUN
   const newPrice = "500000000000000000";
   const newOGUNPrice = "500000000000000000";
-  const tokenUri = "ipfs";
+  const tokenUri = "ipfs://QmWbSP1wbBXt2DidjDMZxS2kkt47ip4LRHphCmSXwXz5Cv";
   const rewardRate = "1000"; // reward rate: 10%
   const rewardLimit = "1000000000000000000000"; // reward rate: 10%
   const initialOgunBalance = "1000000000000000000000";
@@ -549,10 +549,26 @@ describe("marketplace", () => {
     it("should create an edition with NFTs with big number", async () => {
       await nft
         .connect(safeMinter)
-        .createEditionWithNFTs(350n, safeMinter.address, tokenUri, 10);
+        .createEditionWithNFTs(150, safeMinter.address, tokenUri, 10);
       const tokenIdList = await nft.getTokenIdsOfEdition(2);
-      expect(tokenIdList.length).to.be.equal(350);
+      expect(tokenIdList.length).to.be.equal(150);
       expect((await nft.editions(2)).owner).to.be.equal(safeMinter.address);
+    });
+
+    it("should create an edition with NFTs and burn nfts", async () => {
+      const tx = await nft
+        .connect(safeMinter)
+        .createEditionWithNFTs(1, safeMinter.address, tokenUri, 10);
+      const rc = await tx.wait();
+      const event = rc.events.find((event) => event.event === "Transfer");
+      const tokenId = event.args["tokenId"];
+      await expect(nft.burn(tokenId))
+        .to.emit(nft, "Transfer")
+        .withArgs(
+          safeMinter.address,
+          "0x0000000000000000000000000000000000000000",
+          tokenId
+        );
     });
 
     it("should create an edition with NFTs and set royalty and token uri", async () => {
@@ -561,9 +577,8 @@ describe("marketplace", () => {
         .createEditionWithNFTs(10n, safeMinter.address, tokenUri, 10);
       const rc = await tx.wait();
       const event = rc.events.find((event) => event.event === "Transfer");
-      const tokenId = event.args['tokenId']
-      const [creatorAddress, royalties] = await nft
-        .royaltyInfo(tokenId, 1000);
+      const tokenId = event.args["tokenId"];
+      const [creatorAddress, royalties] = await nft.royaltyInfo(tokenId, 1000);
       expect(creatorAddress).to.be.equal(safeMinter.address);
       expect(royalties).to.be.equal("100");
       expect(await nft.tokenURI(tokenId)).to.be.equal(tokenUri);

@@ -4,10 +4,10 @@ pragma solidity ^0.8.2;
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
 import "./IEditions.sol";
-import "erc721a/contracts/ERC721A.sol";
+import "erc721a/contracts/extensions/ERC721ABurnable.sol";
 
 
-contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
+contract Soundchain721Editions is ERC721ABurnable, IERC2981, IEditions {
     using Counters for Counters.Counter;
 
     mapping(uint256 => address) public royaltyReceivers;
@@ -83,8 +83,7 @@ contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
     function tokenURI(uint256 tokenId)
         public
         view
-        virtual
-        override
+        override(ERC721A)
         returns (string memory)
     {
         require(
@@ -109,7 +108,6 @@ contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
 
     function _setTokenURI(uint256 tokenId, string memory _tokenURI)
         internal
-        virtual
     {
         require(
             _exists(tokenId),
@@ -118,7 +116,7 @@ contract Soundchain721Editions is ERC721A, IERC2981, IEditions {
         _tokenURIs[tokenId] = _tokenURI;
     }
 
-    function _burn(uint256 tokenId) internal virtual override {
+    function burn(uint256 tokenId) public override(ERC721ABurnable) {
         super._burn(tokenId);
 
         if (bytes(_tokenURIs[tokenId]).length != 0) {
