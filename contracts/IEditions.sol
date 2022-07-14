@@ -14,6 +14,10 @@ interface IEditions {
         uint256 numRemaining;
         // Owner of the edition.
         address owner;
+        // Royalty receiver of the edition.
+        address royaltyReceiver;
+        // Royalty percentage of the edition.
+        uint8 royaltyPercentage;
     }
 
     // ============ Events ============
@@ -26,7 +30,9 @@ interface IEditions {
 
     function createEdition(
         // The number of tokens that can be minted and sold.
-        uint256 quantity
+        uint256 editionQuantity,
+        address to,
+        uint8 _royaltyPercentage
     ) external returns (uint256 retEditionNumber);
 
     function getTokenIdsOfEdition(uint256 editionNumber)

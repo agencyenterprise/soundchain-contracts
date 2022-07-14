@@ -102,7 +102,7 @@ const main = async () => {
 
   await run("verify:verify", {
     address: marketplaceReceipt.contractAddress,
-    constructorArguments: 
+    constructorArguments:
     [
       FEE_RECIPIENT_ADDRESS,
       OGUN_TOKEN_ADDRESS_MUMBAI,
@@ -115,7 +115,7 @@ const main = async () => {
 
   await run("verify:verify", {
     address: auctionReceipt.contractAddress,
-    constructorArguments:  
+    constructorArguments:
     [
       FEE_RECIPIENT_ADDRESS,
       OGUN_TOKEN_ADDRESS_MUMBAI,
