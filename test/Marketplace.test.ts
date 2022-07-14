@@ -556,30 +556,30 @@ describe("marketplace", () => {
     it("should create an edition with NFTs", async () => {
       await nft
         .connect(safeMinter)
-        .createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
+        .createEditionWithNFTs(230n, safeMinter.address, tokenUri, 10);
       const tokenIdList = await nft.getTokenIdsOfEdition(2);
-      expect(tokenIdList.length).to.be.equal(50);
+      expect(tokenIdList.length).to.be.equal(230);
       expect((await nft.editions(2)).owner).to.be.equal(safeMinter.address);
     });
 
     it("should create an edition and mint after", async () => {
       await nft.connect(safeMinter).createEdition(500n);
 
-      await nft.safeMintToEditionQuantity(
+      await nft.connect(safeMinter).safeMintToEditionQuantity(
         safeMinter.address,
         tokenUri,
         10,
         2,
         100
       );
-      await nft.safeMintToEditionQuantity(
+      await nft.connect(safeMinter).safeMintToEditionQuantity(
         safeMinter.address,
         tokenUri,
         10,
         2,
         100
       );
-      await nft.safeMintToEditionQuantity(
+      await nft.connect(safeMinter).safeMintToEditionQuantity(
         safeMinter.address,
         tokenUri,
         10,
@@ -593,7 +593,7 @@ describe("marketplace", () => {
       await nft.connect(safeMinter).createEdition(10n);
 
       await expect(
-        nft.safeMintToEditionQuantity(safeMinter.address, tokenUri, 10, 2, 100)
+        nft.connect(safeMinter).safeMintToEditionQuantity(safeMinter.address, tokenUri, 10, 2, 100)
       ).to.be.revertedWith("This edition is already full");
     });
 

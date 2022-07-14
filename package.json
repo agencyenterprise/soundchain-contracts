@@ -27,6 +27,7 @@
     "@types/node": "^16.11.7",
     "@types/web3": "^1.2.2",
     "chai": "^4.3.4",
+    "erc721a": "^4.1.0",
     "ethereum-waffle": "^3.4.0",
     "ethers": "^5.5.1",
     "hardhat": "^2.9.3",
