@@ -232,7 +232,7 @@ contract Soundchain721Editions is ERC721ABurnable, Ownable, IERC2981, IEditions 
         );
         uint256 index = 0;
 
-        for (uint256 id = 1; id < _nextTokenId() - 1; id++) {
+        for (uint256 id = 0; id < _nextTokenId(); id++) {
             if (tokenToEdition[id] == editionNumber) {
                 tokenIdsOfEdition[index] = id;
                 index++;
