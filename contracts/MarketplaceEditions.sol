@@ -193,6 +193,26 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         emit EditionCanceled(_nftAddress, _editionNumber);
     }
 
+    /// @notice Method for batch canceling listed NFT
+    function cancelListingBatch(address _nftAddress, uint256[] memory tokenIds)
+        external
+        nonReentrant
+    {
+        IERC721 nft = IERC721(_nftAddress);
+
+        require(tokenIds.length > 0, "tokenIds is empty");
+
+        for (uint256 index = 0; index < tokenIds.length; index++) {
+            if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
+                _cancelListing(
+                    _nftAddress,
+                    tokenIds[index],
+                    _msgSender()
+                );
+            }
+        }
+    }
+
     /// @notice Method for updating listed NFT
     /// @param _nftAddress Address of NFT contract
     /// @param _tokenId Token ID of NFT
@@ -488,6 +508,67 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             }
 
             emit EditionListed(_nftEditionAddress, editionNumber);
+        } else {
+            revert("invalid nft address");
+        }
+    }
+
+    /// @notice Method for batch listing NFT
+    /// @param tokenIds all token IDs to list
+    /// @param _pricePerItem sale price for each iteam
+    /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _acceptsMATIC true in case accepts MATIC as payment
+    /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _startingTime scheduling for a future sale
+    function listBatch(
+        address _nftAddress,
+        uint256[] memory tokenIds,
+        uint256 _pricePerItem,
+        uint256 _OGUNPricePerItem,
+        bool _acceptsMATIC,
+        bool _acceptsOGUN,
+        uint256 _startingTime
+    ) external {
+        require(
+            (_acceptsMATIC || _acceptsOGUN),
+            "item should have a way of payment"
+        );
+
+        require(tokenIds.length > 0, "tokenIds is empty");
+
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+            IERC721 nft = IERC721(_nftAddress);
+
+            require(
+                nft.isApprovedForAll(_msgSender(), address(this)),
+                "item not approved"
+            );
+
+            for (uint256 index = 0; index < tokenIds.length; index++) {
+                if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
+                    listings[_nftAddress][tokenIds[index]][
+                        _msgSender()
+                    ] = Listing(
+                        1,
+                        _pricePerItem,
+                        _OGUNPricePerItem,
+                        _acceptsMATIC,
+                        _acceptsOGUN,
+                        _startingTime
+                    );
+                    emit ItemListed(
+                        _msgSender(),
+                        _nftAddress,
+                        tokenIds[index],
+                        1,
+                        _pricePerItem,
+                        _OGUNPricePerItem,
+                        _acceptsMATIC,
+                        _acceptsOGUN,
+                        _startingTime
+                    );
+                }
+            }
         } else {
             revert("invalid nft address");
         }
