@@ -7,8 +7,8 @@ import {
   Soundchain721,
   Soundchain721__factory,
   SoundchainAuctionMock,
-  SoundchainAuctionMock__factory
-} from "../typechain-types";
+  SoundchainAuctionMock__factory,
+} from "../typechain";
 
 describe("auction", () => {
   const firstTokenId = "0";
@@ -42,12 +42,12 @@ describe("auction", () => {
     OGUN = await token.deploy();
 
     auction = await AuctionFactory.deploy(
-      feeAddress.address, 
-      OGUN.address, 
+      feeAddress.address,
+      OGUN.address,
       platformFee,
       rewardRate,
       rewardLimit
-      );
+    );
 
     await nft.safeMint(minter.address, tokenUri, 10);
     await nft.safeMint(owner.address, tokenUri, 10);
@@ -68,7 +68,14 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, firstTokenId, "1", false, "13", "10" as any)
+            .createAuction(
+              nft.address,
+              firstTokenId,
+              "1",
+              false,
+              "13",
+              "10" as any
+            )
         ).to.be.revertedWith(
           "end time must be greater than start (by 5 minutes)"
         );
@@ -79,7 +86,14 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, firstTokenId, "1", false, "1", "4000" as any)
+            .createAuction(
+              nft.address,
+              firstTokenId,
+              "1",
+              false,
+              "1",
+              "4000" as any
+            )
         ).to.be.revertedWith("invalid start time");
       });
 
@@ -89,7 +103,7 @@ describe("auction", () => {
           .createAuction(
             nft.address,
             firstTokenId,
-            "1", 
+            "1",
             false,
             "10000000000000",
             "100000000000000" as any
@@ -125,7 +139,14 @@ describe("auction", () => {
         await expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, firstTokenId, "1", false, "0", "400" as any)
+            .createAuction(
+              nft.address,
+              firstTokenId,
+              "1",
+              false,
+              "0",
+              "400" as any
+            )
         ).to.be.revertedWith("contract paused");
       });
 
@@ -144,7 +165,14 @@ describe("auction", () => {
         expect(
           auction
             .connect(minter)
-            .createAuction(nft.address, secondTokenId, "1", false, "1", "3" as any)
+            .createAuction(
+              nft.address,
+              secondTokenId,
+              "1",
+              false,
+              "1",
+              "3" as any
+            )
         ).to.be.revertedWith("not owner and or contract not approved");
       });
     });
@@ -185,46 +213,58 @@ describe("auction", () => {
 
       it("reverts with 721 token not on auction", async () => {
         await expect(
-          auction.connect(buyer).placeBid(nft.address, 999, false, "0", { value: 1 })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, 999, false, "0", { value: 1 })
         ).to.be.revertedWith("bidding outside of the auction window");
       });
 
       it("reverts with valid token but no auction", async () => {
         await expect(
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-            value: 1,
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: 1,
+            })
         ).to.be.revertedWith("bidding outside of the auction window");
       });
 
       it("reverts when auction finished", async () => {
         await auction.setNowOverride("500");
         await expect(
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-            value: 1,
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: 1,
+            })
         ).to.be.revertedWith("bidding outside of the auction window");
       });
 
       it("reverts when contract is paused", async () => {
         await auction.connect(owner).toggleIsPaused();
         await expect(
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-            value: 10000000,
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: 10000000,
+            })
         ).to.be.revertedWith("contract paused");
       });
 
       it("reverts when outbidding someone by less than the increment", async () => {
         await auction.setNowOverride("4");
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-          value: 20000000,
-        });
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: 20000000,
+          });
 
         await expect(
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0",{
-            value: 20000000,
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: 20000000,
+            })
         ).to.be.revertedWith("failed to outbid highest bidder");
       });
     });
@@ -244,9 +284,11 @@ describe("auction", () => {
 
       it("places bid and you are the top owner", async () => {
         await auction.setNowOverride("2");
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-          value: BigNumber.from(200000000000000000n),
-        });
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: BigNumber.from(200000000000000000n),
+          });
 
         const { _bidder, _bid } = await auction.getHighestBidder(
           nft.address,
@@ -266,7 +308,9 @@ describe("auction", () => {
         await auction.setNowOverride("2");
         await auction
           .connect(buyer)
-          .placeBid(nft.address, firstTokenId, false, "0", { value: "200000000000000000" });
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: "200000000000000000",
+          });
 
         const { _bidder: originalBidder, _bid: originalBid } =
           await auction.getHighestBidder(nft.address, firstTokenId);
@@ -275,9 +319,11 @@ describe("auction", () => {
 
         // make a new bid, out bidding the previous bidder
         await expect(() =>
-          auction.connect(buyer2).placeBid(nft.address, firstTokenId, false, "0", {
-            value: "400000000000000000",
-          })
+          auction
+            .connect(buyer2)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: "400000000000000000",
+            })
         ).to.changeEtherBalances(
           [buyer, buyer2],
           [200000000000000000n, -400000000000000000n]
@@ -295,9 +341,11 @@ describe("auction", () => {
         await auction.setNowOverride("2");
 
         await expect(() =>
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-            value: "200000000000000000",
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: "200000000000000000",
+            })
         ).to.changeEtherBalances([buyer], [-200000000000000000n]);
 
         const { _bidder, _bid } = await auction.getHighestBidder(
@@ -308,9 +356,11 @@ describe("auction", () => {
         expect(_bidder).to.equal(buyer.address);
 
         await expect(() =>
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-            value: "1000000000000000000",
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: "1000000000000000000",
+            })
         ).to.changeEtherBalances(
           [buyer],
           [-1000000000000000000n + 200000000000000000n]
@@ -327,9 +377,11 @@ describe("auction", () => {
 
         // Bidder 1 makes first bid
         await expect(() =>
-          auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-            value: "200000000000000000",
-          })
+          auction
+            .connect(buyer)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: "200000000000000000",
+            })
         ).to.changeEtherBalances([buyer], [-200000000000000000n]);
 
         const { _bidder, _bid } = await auction.getHighestBidder(
@@ -341,9 +393,11 @@ describe("auction", () => {
 
         // Bidder 2 outbids bidder 1
         await expect(() =>
-          auction.connect(buyer2).placeBid(nft.address, firstTokenId, false, "0", {
-            value: "1000000000000000000",
-          })
+          auction
+            .connect(buyer2)
+            .placeBid(nft.address, firstTokenId, false, "0", {
+              value: "1000000000000000000",
+            })
         ).to.changeEtherBalances(
           [buyer, buyer2],
           [200000000000000000n, -1000000000000000000n]
@@ -371,8 +425,13 @@ describe("auction", () => {
 
       it("places bid and you are the top owner", async () => {
         await auction.setNowOverride("2");
-        await OGUN.connect(buyer).approve(auction.address, BigNumber.from(200000000000000000n));
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "200000000000000000");
+        await OGUN.connect(buyer).approve(
+          auction.address,
+          BigNumber.from(200000000000000000n)
+        );
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "200000000000000000");
 
         const { _bidder, _bid } = await auction.getHighestBidder(
           nft.address,
@@ -390,8 +449,14 @@ describe("auction", () => {
 
       it("will refund the top bidder if found", async () => {
         await auction.setNowOverride("2");
-        await OGUN.connect(buyer).approve(auction.address, "200000000000000000");
-        await OGUN.connect(buyer2).approve(auction.address, "400000000000000000");
+        await OGUN.connect(buyer).approve(
+          auction.address,
+          "200000000000000000"
+        );
+        await OGUN.connect(buyer2).approve(
+          auction.address,
+          "400000000000000000"
+        );
         await auction
           .connect(buyer)
           .placeBid(nft.address, firstTokenId, true, "200000000000000000");
@@ -400,9 +465,11 @@ describe("auction", () => {
           await auction.getHighestBidder(nft.address, firstTokenId);
         expect(originalBid).to.be.equal(200000000000000000n);
         expect(originalBidder).to.equal(buyer.address);
-        
-        // make a new bid, out bidding the previous bidder  
-        await auction.connect(buyer2).placeBid(nft.address, firstTokenId, true, "400000000000000000");
+
+        // make a new bid, out bidding the previous bidder
+        await auction
+          .connect(buyer2)
+          .placeBid(nft.address, firstTokenId, true, "400000000000000000");
 
         const buyerBalance = await OGUN.balanceOf(buyer.address);
 
@@ -416,10 +483,15 @@ describe("auction", () => {
       });
 
       it("increases bid", async () => {
-        await OGUN.connect(buyer).approve(auction.address, "1200000000000000000");
+        await OGUN.connect(buyer).approve(
+          auction.address,
+          "1200000000000000000"
+        );
         await auction.setNowOverride("2");
 
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "200000000000000000");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "200000000000000000");
 
         let buyerBalance = await OGUN.balanceOf(buyer.address);
         expect(buyerBalance).to.be.equal(999999800000000000000000n);
@@ -431,7 +503,9 @@ describe("auction", () => {
         expect(_bid).to.be.equal(200000000000000000n); //-2
         expect(_bidder).to.equal(buyer.address);
 
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "1000000000000000000");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "1000000000000000000");
         buyerBalance = await OGUN.balanceOf(buyer.address);
         expect(buyerBalance).to.be.equal(999999000000000000000000n); //+2 reimbursed , -10 from new bid
 
@@ -442,12 +516,20 @@ describe("auction", () => {
       });
 
       it("outbid bidder", async () => {
-        await OGUN.connect(buyer).approve(auction.address, "1000000000000000000");
-        await OGUN.connect(buyer2).approve(auction.address, "1000000000000000000");
+        await OGUN.connect(buyer).approve(
+          auction.address,
+          "1000000000000000000"
+        );
+        await OGUN.connect(buyer2).approve(
+          auction.address,
+          "1000000000000000000"
+        );
         await auction.setNowOverride("2");
 
         // Bidder 1 makes first bid
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "200000000000000000");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "200000000000000000");
         const { _bidder, _bid } = await auction.getHighestBidder(
           nft.address,
           firstTokenId
@@ -457,7 +539,9 @@ describe("auction", () => {
         expect(_bidder).to.equal(buyer.address);
 
         // Bidder 2 outbids bidder 1
-        await auction.connect(buyer2).placeBid(nft.address, firstTokenId, true, "1000000000000000000");
+        await auction
+          .connect(buyer2)
+          .placeBid(nft.address, firstTokenId, true, "1000000000000000000");
 
         const { _bidder: newBidder, _bid: newBid } =
           await auction.getHighestBidder(nft.address, firstTokenId);
@@ -473,14 +557,23 @@ describe("auction", () => {
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
-          .createAuction(nft.address, firstTokenId, "2", false, "3", "400" as any);
+          .createAuction(
+            nft.address,
+            firstTokenId,
+            "2",
+            false,
+            "3",
+            "400" as any
+          );
       });
 
       it("reverts if it's not the owner", async () => {
         await auction.setNowOverride("4");
-        await auction.connect(buyer2).placeBid(nft.address, firstTokenId, false, "0", {
-          value: 2000000000000n,
-        });
+        await auction
+          .connect(buyer2)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: 2000000000000n,
+          });
         await auction.setNowOverride("40000");
         await expect(
           auction.connect(buyer).resultAuction(nft.address, firstTokenId)
@@ -502,9 +595,11 @@ describe("auction", () => {
 
       it("reverts if the auction if its already resulted", async () => {
         await auction.setNowOverride("4");
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-          value: 1000000000000n,
-        });
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: 1000000000000n,
+          });
         await auction.setNowOverride("40000");
 
         await auction.connect(minter).resultAuction(nft.address, firstTokenId);
@@ -520,14 +615,25 @@ describe("auction", () => {
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
-          .createAuction(nft.address, firstTokenId, "1", true, "3", "400" as any);
+          .createAuction(
+            nft.address,
+            firstTokenId,
+            "1",
+            true,
+            "3",
+            "400" as any
+          );
         await auction.setNowOverride("4");
-        await OGUN.connect(buyer).approve(auction.address, BigNumber.from(1000000000000000000n));
+        await OGUN.connect(buyer).approve(
+          auction.address,
+          BigNumber.from(1000000000000000000n)
+        );
       });
 
-
       it("transfer token to the winner using OGUN", async () => {
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "2000000000000");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "2000000000000");
         await auction.setNowOverride("40000");
 
         expect(await nft.ownerOf(firstTokenId)).to.be.equal(minter.address);
@@ -538,7 +644,9 @@ describe("auction", () => {
       });
 
       it("transfer OGUN funds to the token creator and platform", async () => {
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "1000000000000000000");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "1000000000000000000");
         await auction.setNowOverride("40000");
 
         await auction.connect(minter).resultAuction(nft.address, firstTokenId);
@@ -551,7 +659,9 @@ describe("auction", () => {
       });
 
       it("buyer can result the OGUN auction", async () => {
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "1000000000000000000");
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "1000000000000000000");
         await auction.setNowOverride("40000");
 
         await auction.connect(buyer).resultAuction(nft.address, firstTokenId);
@@ -564,8 +674,13 @@ describe("auction", () => {
       });
 
       it("buyer can result the OGUN auction - Over Max Reward Limit", async () => {
-        await OGUN.connect(buyer).approve(auction.address, BigNumber.from(15000000000000000000000n));
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, true, "15000000000000000000000");
+        await OGUN.connect(buyer).approve(
+          auction.address,
+          BigNumber.from(15000000000000000000000n)
+        );
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, true, "15000000000000000000000");
         await auction.setNowOverride("40000");
 
         await auction.connect(buyer).resultAuction(nft.address, firstTokenId);
@@ -575,23 +690,34 @@ describe("auction", () => {
 
         expect(minterBalance).to.be.equal(15625000000000000000000n); // 14625 Ogun + rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
         expect(feeAddressBalance).to.be.equal(375000000000000000000n); // 2,5% of 15k Ogun - Not earning rewards
-        expect(await OGUN.balanceOf(buyer.address)).to.be.equal(986000000000000000000000n); // original balance - 15k + the rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
+        expect(await OGUN.balanceOf(buyer.address)).to.be.equal(
+          986000000000000000000000n
+        ); // original balance - 15k + the rewards of 1k Ogun (10% of 15k Ogun is over the hardcap)
       });
     });
-    
+
     describe("successfully resulting an auction", async () => {
       beforeEach(async () => {
         await auction.setNowOverride("2");
         await auction
           .connect(minter)
-          .createAuction(nft.address, firstTokenId, "1", false, "3", "400" as any);
+          .createAuction(
+            nft.address,
+            firstTokenId,
+            "1",
+            false,
+            "3",
+            "400" as any
+          );
         await auction.setNowOverride("4");
       });
 
       it("transfer token to the winner", async () => {
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-          value: 2000000000000n,
-        });
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: 2000000000000n,
+          });
         await auction.setNowOverride("40000");
 
         expect(await nft.ownerOf(firstTokenId)).to.be.equal(minter.address);
@@ -602,9 +728,11 @@ describe("auction", () => {
       });
 
       it("transfer funds to the token creator and platform", async () => {
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-          value: 1000000000000000000n,
-        });
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: 1000000000000000000n,
+          });
         await auction.setNowOverride("40000");
 
         await expect(() =>
@@ -616,9 +744,11 @@ describe("auction", () => {
       });
 
       it("buyer can result the auction", async () => {
-        await auction.connect(buyer).placeBid(nft.address, firstTokenId, false, "0", {
-          value: 1000000000000000000n,
-        });
+        await auction
+          .connect(buyer)
+          .placeBid(nft.address, firstTokenId, false, "0", {
+            value: 1000000000000000000n,
+          });
         await auction.setNowOverride("40000");
 
         await expect(() =>
@@ -977,7 +1107,7 @@ describe("auction", () => {
       const feeAddressBalance1 = await OGUN.balanceOf(feeAddress.address);
       const buyerBalance1 = await OGUN.balanceOf(buyer.address);
       const minterBalance1 = await OGUN.balanceOf(minter.address);
-      
+
       await auction.setNowOverride("2");
       await auction.connect(buyer).createAuction(
         nft.address,

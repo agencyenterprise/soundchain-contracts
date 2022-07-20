@@ -1,29 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.2;
 
-import "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721URIStorage.sol";
-import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
+import "erc721a/contracts/extensions/ERC721ABurnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/utils/Counters.sol";
 import "./IEditions.sol";
 
-contract Soundchain721Editions is
-    ERC721,
-    ERC721Enumerable,
-    ERC721URIStorage,
-    ERC721Burnable,
-    Ownable,
-    IERC2981,
-    IEditions
-{
+contract Soundchain721Editions is ERC721ABurnable, Ownable, IERC2981, IEditions {
     using Counters for Counters.Counter;
 
-    Counters.Counter private _tokenIdCounter;
     mapping(uint256 => address) public royaltyReceivers;
     mapping(uint256 => uint8) public royaltyPercentage;
+    mapping(uint256 => string) private _tokenURIs;
+    string private _contractURI;
 
     // ============ Mutable Storage ============
     // Mapping of edition id to descriptive data.
@@ -33,24 +23,30 @@ contract Soundchain721Editions is
     // Mapping of edition id to token id.
     Counters.Counter private nextEditionId;
 
-    constructor() ERC721("SoundchainCollectible", "SC") {
+    constructor(string memory contractURI_)
+        ERC721A("SoundchainCollectible", "SC")
+    {
         nextEditionId.increment(); //lets start at 1 ;)
-
+        _contractURI = contractURI_;
     }
 
-    function safeMint(address to, string memory _tokenURI, uint8 _royaltyPercentage) public {
-        uint tokenId = _tokenIdCounter.current();
-
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, _tokenURI);
-        _tokenIdCounter.increment();
-        setRoyalty(tokenId, to, _royaltyPercentage);
+    function contractURI() public view returns (string memory) {
+        return _contractURI;
     }
-    
+
+    function safeMint(
+        address to,
+        string memory _tokenURI,
+        uint8 _royaltyPercentage
+    ) public {
+        _safeMint(to, 1);
+        _setTokenURI(_nextTokenId() - 1, _tokenURI);
+        setRoyalty(_nextTokenId() - 1, to, _royaltyPercentage);
+    }
+
     function safeMintToEdition(
         address to,
         string memory _tokenURI,
-        uint8 _royaltyPercentage,
         uint256 editionNumber
     ) public {
         require(editions[editionNumber].quantity > 0, "Invalid editionNumber");
@@ -58,19 +54,29 @@ contract Soundchain721Editions is
             editions[editionNumber].numSold < editions[editionNumber].quantity,
             "This edition is already full"
         );
+        require(
+            editions[editionNumber].owner == msg.sender,
+            "Not owner of edition"
+        );
 
-        uint256 tokenId = _tokenIdCounter.current();
-
-        _safeMint(to, tokenId);
-        _setTokenURI(tokenId, _tokenURI);
-        _tokenIdCounter.increment();
-        setRoyalty(tokenId, to, _royaltyPercentage);
-
+        _safeMint(to, 1);
+        _setTokenURI(_nextTokenId() - 1, _tokenURI);
         editions[editionNumber].numSold++;
         editions[editionNumber].numRemaining =
             editions[editionNumber].quantity -
             editions[editionNumber].numSold;
-        tokenToEdition[tokenId] = editionNumber;
+        tokenToEdition[_nextTokenId() - 1] = editionNumber;
+    }
+
+    function safeMintToEditionQuantity(
+        address to,
+        string memory _tokenURI,
+        uint256 editionNumber,
+        uint16 quantity
+    ) public {
+        for (uint256 i = 0; i < quantity; i++) {
+            safeMintToEdition(to, _tokenURI, editionNumber);
+        }
     }
 
     function setRoyalty(
@@ -82,34 +88,52 @@ contract Soundchain721Editions is
         royaltyPercentage[tokenId] = _royaltyPercentage;
     }
 
-    function _beforeTokenTransfer(
-        address from,
-        address to,
-        uint256 tokenId
-    ) internal override(ERC721, ERC721Enumerable) {
-        super._beforeTokenTransfer(from, to, tokenId);
-    }
-
-    function _burn(uint256 tokenId)
-        internal
-        override(ERC721, ERC721URIStorage)
-    {
-        super._burn(tokenId);
-    }
-
     function tokenURI(uint256 tokenId)
         public
         view
-        override(ERC721, ERC721URIStorage)
+        override(ERC721A)
         returns (string memory)
     {
+        require(
+            _exists(tokenId),
+            "ERC721URIStorage: URI query for nonexistent token"
+        );
+
+        string memory _tokenURI = _tokenURIs[tokenId];
+        string memory base = _baseURI();
+
+        // If there is no base URI, return the token URI.
+        if (bytes(base).length == 0) {
+            return _tokenURI;
+        }
+        // If both are set, concatenate the baseURI and tokenURI (via abi.encodePacked).
+        if (bytes(_tokenURI).length > 0) {
+            return string(abi.encodePacked(base, _tokenURI));
+        }
+
         return super.tokenURI(tokenId);
+    }
+
+    function _setTokenURI(uint256 tokenId, string memory _tokenURI) internal {
+        require(
+            _exists(tokenId),
+            "ERC721URIStorage: URI set of nonexistent token"
+        );
+        _tokenURIs[tokenId] = _tokenURI;
+    }
+
+    function burn(uint256 tokenId) public override(ERC721ABurnable) {
+        super._burn(tokenId);
+
+        if (bytes(_tokenURIs[tokenId]).length != 0) {
+            delete _tokenURIs[tokenId];
+        }
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721Enumerable, IERC165)
+        override(ERC721A, IERC165)
         returns (bool)
     {
         return
@@ -129,9 +153,16 @@ contract Soundchain721Editions is
         override(IERC2981)
         returns (address receiver, uint256 royaltyAmount)
     {
-        uint8 percentage = royaltyPercentage[tokenId];
+        uint8 percentage;
+        address creatorAddress;
+        if (editions[tokenToEdition[tokenId]].quantity > 0) {
+            percentage = editions[tokenToEdition[tokenId]].royaltyPercentage;
+            creatorAddress = editions[tokenToEdition[tokenId]].royaltyReceiver;
+        } else {
+            percentage = royaltyPercentage[tokenId];
+            creatorAddress = royaltyReceivers[tokenId];
+        }
         uint256 _royalties = (_salePrice * percentage) / 100;
-        address creatorAddress = royaltyReceivers[tokenId];
         return (creatorAddress, _royalties);
     }
 
@@ -139,16 +170,21 @@ contract Soundchain721Editions is
 
     function createEdition(
         // The number of tokens that can be minted and sold.
-        uint256 quantity
-    ) external  returns (uint256 retEditionNumber) {
-        require(quantity > 0, "Quantity must be greater than zero (0)");
+        uint256 editionQuantity,
+        address to,
+        uint8 _royaltyPercentage
+    ) external returns (uint256 retEditionNumber) {
+        require(editionQuantity > 0, "Quantity must be greater than zero (0)");
         editions[nextEditionId.current()] = Edition({
-            quantity: quantity,
+            quantity: editionQuantity,
             numSold: 0,
-            numRemaining: quantity
+            numRemaining: editionQuantity,
+            owner: to,
+            royaltyReceiver: to,
+            royaltyPercentage: _royaltyPercentage
         });
 
-        emit EditionCreated(quantity, nextEditionId.current());
+        emit EditionCreated(editionQuantity, nextEditionId.current(), to);
 
         nextEditionId.increment();
         return nextEditionId.current() - 1;
@@ -160,20 +196,23 @@ contract Soundchain721Editions is
         address to,
         string memory _tokenURI,
         uint8 _royaltyPercentage
-    ) external  returns (uint256 retEditionNumber) {
+    ) external returns (uint256 retEditionNumber) {
         require(editionQuantity > 0, "Quantity must be greater than zero (0)");
 
         editions[nextEditionId.current()] = Edition({
             quantity: editionQuantity,
             numSold: 0,
-            numRemaining: editionQuantity
+            numRemaining: editionQuantity,
+            owner: to,
+            royaltyReceiver: to,
+            royaltyPercentage: _royaltyPercentage
         });
 
         for (uint256 i = 0; i < editionQuantity; i++) {
-            safeMintToEdition(to, _tokenURI, _royaltyPercentage, nextEditionId.current());
+            safeMintToEdition(to, _tokenURI, nextEditionId.current());
         }
 
-        emit EditionCreated(editionQuantity, nextEditionId.current());
+        emit EditionCreated(editionQuantity, nextEditionId.current(), to);
 
         nextEditionId.increment();
         return nextEditionId.current() - 1;
@@ -193,7 +232,7 @@ contract Soundchain721Editions is
         );
         uint256 index = 0;
 
-        for (uint256 id = 1; id < _tokenIdCounter.current(); id++) {
+        for (uint256 id = 0; id < _nextTokenId(); id++) {
             if (tokenToEdition[id] == editionNumber) {
                 tokenIdsOfEdition[index] = id;
                 index++;

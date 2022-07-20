@@ -7,7 +7,7 @@ dotenv.config();
 
 const region = "us-east-1";
 
-const { AWS_KMS_KEY_ID, POLYGON_ALCHEMY_URL } = process.env;
+const { AWS_KMS_KEY_ID, POLYGON_ALCHEMY_URL, CONTRACT_URI } = process.env;
 
 const provider = new KmsProvider(POLYGON_ALCHEMY_URL, {
   region,
@@ -43,7 +43,7 @@ const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 const main = async () => {
   console.log("💡 Deploying SoundchainCollectible");
   const Soundchain721 = await ethers.getContractFactory("Soundchain721Editions");
-  const soundchainNFTDeployTransaction = Soundchain721.getDeployTransaction();
+  const soundchainNFTDeployTransaction = Soundchain721.getDeployTransaction(CONTRACT_URI);
   const soundchainNFTSigned = await getSignedTransaction(
     soundchainNFTDeployTransaction.data
   );
@@ -97,12 +97,16 @@ const main = async () => {
 
   await run("verify:verify", {
     address: soundchainNFTReceipt.contractAddress,
+    constructorArguments:
+    [
+      CONTRACT_URI
+    ],
   });
   console.log("✅ SoundchainCollectible verified on Etherscan");
 
   await run("verify:verify", {
     address: marketplaceReceipt.contractAddress,
-    constructorArguments: 
+    constructorArguments:
     [
       FEE_RECIPIENT_ADDRESS,
       OGUN_TOKEN_ADDRESS_MUMBAI,
@@ -115,7 +119,7 @@ const main = async () => {
 
   await run("verify:verify", {
     address: auctionReceipt.contractAddress,
-    constructorArguments:  
+    constructorArguments:
     [
       FEE_RECIPIENT_ADDRESS,
       OGUN_TOKEN_ADDRESS_MUMBAI,
