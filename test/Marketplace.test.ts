@@ -774,7 +774,7 @@ describe("marketplace", () => {
     });
     
   });
-  describe.only('Batch Listing', () => {
+  describe('Batch Listing', () => {
     it('should validate empty tokenId list', async () => {
       expect(
         marketplace.connect(safeMinter)
@@ -815,8 +815,40 @@ describe("marketplace", () => {
         expect(emittedIds).to.include(tokenId.toString());
       })
     })
+
+    it('should not list the same tokens twice', async () => {
+      await nft
+        .connect(safeMinter)
+        .setApprovalForAll(marketplace.address, true);
+
+      const tx = await nft.connect(safeMinter).createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
+  
+      const receipt = await tx.wait();
+      const tokenIds = receipt.events.filter((event) => event.event === "Transfer").map((event) => event.args?.[2]);
+  
+      const mktTx = await marketplace.connect(safeMinter)
+        .listBatch(nft.address, tokenIds, pricePerItem, OGUNPricePerItem, true, true, "0");
+  
+      const mktReceipt = await mktTx.wait();
+  
+      const itemListedEvents = mktReceipt.events.filter((event) => event.event === "ItemListed");
+      const emittedIds = itemListedEvents.map((event) => event.args?.[2].toString());
+  
+      expect(itemListedEvents.length).to.equal(50);
+      tokenIds.forEach((tokenId) => {
+        expect(emittedIds).to.include(tokenId.toString());
+      })
+
+      const mktTx2 = await marketplace.connect(safeMinter)
+      .listBatch(nft.address, tokenIds, pricePerItem, OGUNPricePerItem, true, true, "0");
+
+    const mktReceipt2 = await mktTx2.wait();
+
+    const itemListedEvents2 = mktReceipt2.events.filter((event) => event.event === "ItemListed");
+    expect(itemListedEvents2.length).to.equal(0);
+    })
   })
-  describe.only('Batch Cancelling', () => {
+  describe('Batch Cancelling', () => {
     it('should validate empty tokenId list', async () => {
       expect(
         marketplace.connect(safeMinter)
@@ -848,6 +880,25 @@ describe("marketplace", () => {
       tokenIds.forEach((tokenId) => {
         expect(emittedIds).to.include(tokenId.toString());
       })
+    })
+
+    it('should only cancel listed tokens', async () => {
+      await nft
+        .connect(safeMinter)
+        .setApprovalForAll(marketplace.address, true);
+
+      const tx = await nft.connect(safeMinter).createEditionWithNFTs(50n, safeMinter.address, tokenUri, 10);
+  
+      const receipt = await tx.wait();
+      const tokenIds = receipt.events.filter((event) => event.event === "Transfer").map((event) => event.args?.[2]);
+
+      const mktTx = await marketplace.connect(safeMinter)
+        .cancelListingBatch(nft.address, tokenIds);
+  
+      const mktReceipt = await mktTx.wait();
+      const itemListedEvents = mktReceipt.events.filter((event) => event.event === "ItemCanceled");
+
+      expect(itemListedEvents.length).to.equal(0);
     })
   })
 });
