@@ -93,8 +93,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         address _owner
     ) {
-        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
-        require(listing.quantity > 0, "not listed item");
+        require(_isListed(_nftAddress, _tokenId, _owner), "not listed item");
         _;
     }
 
@@ -103,8 +102,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         address _owner
     ) {
-        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
-        require(listing.quantity == 0, "already listed");
+        require(_notListed(_nftAddress, _tokenId, _owner), "already listed");
         _;
     }
 
@@ -203,12 +201,11 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         require(tokenIds.length > 0, "tokenIds is empty");
 
         for (uint256 index = 0; index < tokenIds.length; index++) {
-            if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
-                _cancelListing(
-                    _nftAddress,
-                    tokenIds[index],
-                    _msgSender()
-                );
+            if (
+                nft.ownerOf(tokenIds[index]) == _msgSender() &&
+                _isListed(_nftAddress, tokenIds[index], _msgSender())
+            ) {
+                _cancelListing(_nftAddress, tokenIds[index], _msgSender());
             }
         }
     }
@@ -545,7 +542,10 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             );
 
             for (uint256 index = 0; index < tokenIds.length; index++) {
-                if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
+                if (
+                    nft.ownerOf(tokenIds[index]) == _msgSender() &&
+                    _notListed(_nftAddress, tokenIds[index], _msgSender())
+                ) {
                     listings[_nftAddress][tokenIds[index]][
                         _msgSender()
                     ] = Listing(
@@ -631,6 +631,24 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;
+    }
+
+    function _isListed(
+        address _nftAddress,
+        uint256 _tokenId,
+        address _owner
+    ) private view returns (bool) {
+        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
+        return listing.quantity > 0;
+    }
+
+    function _notListed(
+        address _nftAddress,
+        uint256 _tokenId,
+        address _owner
+    ) private view returns (bool) {
+        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
+        return listing.quantity == 0;
     }
 
     function _cancelListing(
