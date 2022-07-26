@@ -839,13 +839,10 @@ describe("marketplace", () => {
         expect(emittedIds).to.include(tokenId.toString());
       })
 
-      const mktTx2 = await marketplace.connect(safeMinter)
-      .listBatch(nft.address, tokenIds, pricePerItem, OGUNPricePerItem, true, true, "0");
-
-    const mktReceipt2 = await mktTx2.wait();
-
-    const itemListedEvents2 = mktReceipt2.events.filter((event) => event.event === "ItemListed");
-    expect(itemListedEvents2.length).to.equal(0);
+      expect(
+        marketplace.connect(safeMinter)
+      .listBatch(nft.address, tokenIds, pricePerItem, OGUNPricePerItem, true, true, "0")
+      ).to.be.revertedWith("item already listed");
     })
   })
   describe('Batch Cancelling', () => {
@@ -892,13 +889,10 @@ describe("marketplace", () => {
       const receipt = await tx.wait();
       const tokenIds = receipt.events.filter((event) => event.event === "Transfer").map((event) => event.args?.[2]);
 
-      const mktTx = await marketplace.connect(safeMinter)
-        .cancelListingBatch(nft.address, tokenIds);
-  
-      const mktReceipt = await mktTx.wait();
-      const itemListedEvents = mktReceipt.events.filter((event) => event.event === "ItemCanceled");
-
-      expect(itemListedEvents.length).to.equal(0);
+      expect(
+        marketplace.connect(safeMinter)
+        .cancelListingBatch(nft.address, tokenIds)
+      ).to.be.revertedWith("item not listed");
     })
   })
 });
