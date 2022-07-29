@@ -228,9 +228,6 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         bool _acceptsOGUN,
         uint256 _startingTime
     ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
-        Listing storage listedItem = listings[_nftAddress][_tokenId][
-            _msgSender()
-        ];
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
             IERC721 nft = IERC721(_nftAddress);
             require(nft.ownerOf(_tokenId) == _msgSender(), "not owning item");
@@ -243,11 +240,15 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             "item should have a way of payment"
         );
 
-        listedItem.pricePerItem = _newPrice;
-        listedItem.acceptsMATIC = _acceptsMATIC;
-        listedItem.OGUNPricePerItem = _newOGUNPrice;
-        listedItem.acceptsOGUN = _acceptsOGUN;
-        listedItem.startingTime = _startingTime;
+        listings[_nftAddress][_tokenId][_msgSender()] = Listing(
+            1,
+            _newPrice,
+            _newOGUNPrice,
+            _acceptsMATIC,
+            _acceptsOGUN,
+            _startingTime
+        );
+
         emit ItemUpdated(
             _msgSender(),
             _nftAddress,
@@ -542,6 +543,15 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                 "item not approved"
             );
 
+            Listing memory listing = Listing(
+                1,
+                _pricePerItem,
+                _OGUNPricePerItem,
+                _acceptsMATIC,
+                _acceptsOGUN,
+                _startingTime
+            );
+
             for (uint256 index = 0; index < tokenIds.length; index++) {
                 if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
                     require(
@@ -551,14 +561,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
 
                     listings[_nftAddress][tokenIds[index]][
                         _msgSender()
-                    ] = Listing(
-                        1,
-                        _pricePerItem,
-                        _OGUNPricePerItem,
-                        _acceptsMATIC,
-                        _acceptsOGUN,
-                        _startingTime
-                    );
+                    ] = listing;
                     emit ItemListed(
                         _msgSender(),
                         _nftAddress,
