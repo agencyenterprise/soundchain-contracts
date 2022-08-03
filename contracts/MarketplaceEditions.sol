@@ -285,7 +285,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             require(
                 allowance >=
                     listedItem.OGUNPricePerItem.mul(listedItem.quantity),
-                "insufficient balance to buy"
+                "insufficient OGUN balance to buy"
             );
             require(
                 listedItem.acceptsOGUN == true,
@@ -294,7 +294,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         } else {
             require(
                 msg.value >= listedItem.pricePerItem.mul(listedItem.quantity),
-                "insufficient balance to buy"
+                "insufficient MATIC balance to buy"
             );
             require(
                 listedItem.acceptsMATIC == true,
