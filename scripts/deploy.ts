@@ -36,11 +36,24 @@ const sendSignedTransaction = async (signedTransaction) => {
   return await web3.eth.sendSignedTransaction(signedTransaction);
 };
 
-const { FEE_RECIPIENT_ADDRESS, PLATFORM_FEE, OGUN_TOKEN_ADDRESS_MUMBAI, REWARDS_RATE, REWARDS_LIMIT } = process.env;
+const { FEE_RECIPIENT_ADDRESS, PLATFORM_FEE, OGUN_TOKEN_ADDRESS_MUMBAI, REWARDS_RATE, REWARDS_LIMIT, MERKLE_ROOT } = process.env;
 
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const main = async () => {
+  console.log("💡 Deploying Airdrop Contract");
+  const AirDropContract = await ethers.getContractFactory("MerkleClaimERC20");
+  const airdropTransaction = AirDropContract.getDeployTransaction(OGUN_TOKEN_ADDRESS_MUMBAI, MERKLE_ROOT);
+  const airdropSigned = await getSignedTransaction(
+      airdropTransaction.data
+  );
+  const airdropReceipt = await sendSignedTransaction(
+    airdropSigned.raw
+  );
+  console.log(
+    `✅ Airdrop deployed to address: ${airdropReceipt.contractAddress}`
+  );
+
   console.log("💡 Deploying SoundchainCollectible");
   const Soundchain721 = await ethers.getContractFactory("Soundchain721Editions");
   const soundchainNFTDeployTransaction = Soundchain721.getDeployTransaction(CONTRACT_URI);
@@ -53,7 +66,6 @@ const main = async () => {
   console.log(
     `✅ SoundchainCollectible deployed to address: ${soundchainNFTReceipt.contractAddress}`
   );
-
   console.log("💡 Deploying Marketplace");
   const MarketplaceFactory = await ethers.getContractFactory(
     "SoundchainMarketplaceEditions"
@@ -96,12 +108,20 @@ const main = async () => {
   console.log("🪄  Verifying contracts");
 
   await run("verify:verify", {
+    address: airdropReceipt.contractAddress,
+    constructorArguments: [ OGUN_TOKEN_ADDRESS_MUMBAI, MERKLE_ROOT ],
+  });
+
+  console.log("✅ AirDropContract verified on Etherscan");
+  
+  await run("verify:verify", {
     address: soundchainNFTReceipt.contractAddress,
     constructorArguments:
     [
       CONTRACT_URI
     ],
   });
+
   console.log("✅ SoundchainCollectible verified on Etherscan");
 
   await run("verify:verify", {
