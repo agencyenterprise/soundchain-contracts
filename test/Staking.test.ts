@@ -42,6 +42,20 @@ describe("Staking", () => {
       //+10 new blocks in nectwork until now
     });
   describe("Stake contract", function () {
+    describe("Return User rewards from staked amount ", () => {
+      it("should return the user rewards from staked tokens", async function () {
+        await stake.connect(user1).stake(transfer500k);
+        const reward = await stake.callStatic.getReward(user1.address);
+        const etherNumber = ethers.utils.formatEther(reward);
+        expect(etherNumber).to.eq("500000.0");
+      });
+
+      it("should return the user reward as ZERO with no staked tokens", async function () {
+        const reward = await stake.callStatic.getReward(user1.address);
+        const etherNumber = ethers.utils.formatEther(reward);
+        expect(etherNumber).to.eq("0.0");
+      });
+    });
 
     describe("Stake calculation for different pahses with just 1 user", () => {
       it("reverts if address doesn't exist in balances", async function () {
