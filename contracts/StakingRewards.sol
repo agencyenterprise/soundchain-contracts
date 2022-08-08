@@ -128,10 +128,14 @@ contract StakingRewards is ReentrancyGuard {
         return newBalance;
     }
 
+    function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
+        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked);
+        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
+    }    
+
     function getReward(address _user) external view returns (uint256 reward) {
         reward = _getReward(_user);
         return reward;
-    }
     }
 
     function _getRewardPhaseRate(uint256 _blockNumber) private pure returns (uint256 rate, uint256 phaseLimit) {
