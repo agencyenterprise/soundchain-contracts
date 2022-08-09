@@ -79,7 +79,32 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
         uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(totalLpStaked);
-        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
+        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);  
+    }
+
+    function _getReward(address _user) private view returns (uint256 reward) {
+        uint256 userLpBalance = _lpBalances[_user];
+        if (userLpBalance <= 0) {
+            return uint256(0);
+        }
+        uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
+        //Calculate blocks under 1000000
+        if (block.number - firstBlockNumber > 1000000) {
+            blocksToCalculate =
+                1000000 -
+                (_lastUpdatedBlockNumber - firstBlockNumber);
+        }
+        reward = _rewardPerBlock(
+            userLpBalance,
+            REWARDS_RATE,
+            blocksToCalculate
+        );
+        return reward;
+    }
+
+    function getReward(address _user) external view returns (uint256 reward) {
+        reward = _getReward(_user);
+        return reward;
     }
 
     function _updateReward() internal {

@@ -89,9 +89,53 @@ contract StakingRewards is ReentrancyGuard {
         _totalStakedTemp += newBalance;
     }
 
+    function _getReward(address _user)
+        private
+        view
+        returns (uint256 newBalance)
+    {
+        uint256 userBalance = _balances[_user];
+        if (userBalance <= 0) {
+            return uint256(0);
+        }
+        uint256 phase = block.number - firstBlockNumber;
+        uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
+        (uint256 currentRate, ) = _getRewardPhaseRate(phase);
+        (
+            uint256 previousPhaseRate,
+            uint256 previousRateLimit
+        ) = _getRewardPhaseRate(_lastUpdatedBlockNumber - firstBlockNumber + 1);
+        uint256 previousPhaseRewards;
+        uint256 previousBlocksToCalculate;
+
+        //Check if there are blocks to calculate from a previous phase
+        if (currentRate != previousPhaseRate) {
+            previousBlocksToCalculate = previousRateLimit.sub(
+                _lastUpdatedBlockNumber.sub(firstBlockNumber)
+            );
+            previousPhaseRewards = _rewardPerBlock(
+                userBalance,
+                previousPhaseRate,
+                previousBlocksToCalculate
+            );
+        }
+        uint256 rewards = _rewardPerBlock(
+            userBalance,
+            currentRate,
+            blocksToCalculate
+        );
+        newBalance = userBalance.add(rewards).add(previousPhaseRewards);
+        return newBalance;
+    }
+
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
         uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked);
         return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
+    }    
+
+    function getReward(address _user) external view returns (uint256 reward) {
+        reward = _getReward(_user);
+        return reward;
     }
 
     function _getRewardPhaseRate(uint256 _blockNumber) private pure returns (uint256 rate, uint256 phaseLimit) {
