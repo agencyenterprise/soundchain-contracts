@@ -21,15 +21,15 @@ contract StakingRewards is ReentrancyGuard {
     // emit PhaseInfo(block.number, _blockNumber, "");
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant REWARDS_PHASE_ONE = 500000000000000000000;
-    uint256 public constant REWARDS_PHASE_TWO = 625000000000000000000; 
-    uint256 public constant REWARDS_PHASE_THREE = 625000000000000000000; 
-    uint256 public constant REWARDS_PHASE_FOUR = 750000000000000000000; 
-    uint256 public constant PHASE_ONE_BLOCK = 4; 
-    uint256 public constant PHASE_TWO_BLOCK = 8; 
-    uint256 public constant PHASE_THREE_BLOCK = 12; 
-    uint256 public constant PHASE_FOUR_BLOCK = 16;
-    
+    uint256 public constant PHASE_ONE_BLOCK = 1250000; 
+    uint256 public constant PHASE_TWO_BLOCK = 3125000 + PHASE_ONE_BLOCK; 
+    uint256 public constant PHASE_THREE_BLOCK = 10000000 + PHASE_TWO_BLOCK; 
+    uint256 public constant PHASE_FOUR_BLOCK = 15000000 + PHASE_THREE_BLOCK;
+    uint256 public constant REWARDS_PHASE_ONE = 32 * (10**18);
+    uint256 public constant REWARDS_PHASE_TWO = 16 * (10**18); 
+    uint256 public constant REWARDS_PHASE_THREE = 5 * (10**18); 
+    uint256 public constant REWARDS_PHASE_FOUR = 4 * (10**18);
+
     IERC20 public immutable stakingToken;
 
     uint256 private _lastUpdatedBlockNumber;
@@ -143,7 +143,7 @@ contract StakingRewards is ReentrancyGuard {
     }
 
     function getReward(address _user) external view returns (uint256) {
-        return _calculateNewRewardAmount(_user);
+        return _rewardBalances[_user] + _calculateNewRewardAmount(_user);
     }
 
     function _updateReward() internal {
