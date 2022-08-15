@@ -7,6 +7,10 @@
     "compile": "npx hardhat compile",
     "deploy:testnet": "npx hardhat run scripts/deploy.ts --network mumbai",
     "deploy:mainnet": "npx hardhat run scripts/deploy.ts --network polygon",
+    "deploy-lp:testnet": "npx hardhat run scripts/deployLPRewards.ts --network mumbai",
+    "deploy-lp:mainnet": "npx hardhat run scripts/deployLPRewards.ts --network polygon",
+    "send-ogun:testnet": "npx hardhat run scripts/sendOGUN.ts --network mumbai",
+    "send-ogun:mainnet": "npx hardhat run scripts/sendOGUN.ts --network polygon",
     "test": "npx hardhat test",
     "coverage": "npx hardhat coverage",
     "generate-types": "npx typechain --target=web3-v1 'abi/contracts/**/*.json'"
@@ -31,6 +35,7 @@
     "ethers": "^5.5.1",
     "hardhat": "^2.9.3",
     "hardhat-abi-exporter": "^2.9.0",
+    "mocha": "^10.0.0",
     "ts-node": "^10.4.0",
     "typechain": "^5.2.0",
     "typescript": "^4.5.2"

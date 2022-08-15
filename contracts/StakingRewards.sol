@@ -11,39 +11,43 @@ contract StakingRewards is ReentrancyGuard {
 
     event Stake(address indexed user, uint256 amount);
 
-    event Withdraw(address indexed user, uint256 amount);
+    event Withdraw(address indexed user, uint256 stakedAmount, uint256 rewardAmount);
 
-    event RewardsCalculated(uint256 amount);
+    event RewardsCalculated(uint256 totalRewardsAllocated, uint256 totalUserBalances, uint256 totalStakedPlusRewards);
 
-    event RewardsCalculatedOf(uint256 amount, address account);
+    event RewardsCalculatedOf(uint256 stakedAmount, uint256 inclusiveRewardAmount, uint256 newRewardAmount, address account);
+
+    // event PhaseInfo(uint256 currentBlock, uint256 relativeBlock, string currentPhase);
+    // emit PhaseInfo(block.number, _blockNumber, "");
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant REWARDS_PHASE_ONE = 307692308000000000000;
-    uint256 public constant REWARDS_PHASE_TWO = 128205128000000000000; 
-    uint256 public constant REWARDS_PHASE_THREE = 48076923100000000000; 
-    uint256 public constant REWARDS_PHASE_FOUR = 38359083600000000000; 
-    uint256 public constant PHASE_ONE_BLOCK = 195000; 
-    uint256 public constant PHASE_TWO_BLOCK = 780000; 
-    uint256 public constant PHASE_THREE_BLOCK = 2340000; 
-    uint256 public constant PHASE_FOUR_BLOCK = 4686250; 
+    uint256 public constant REWARDS_PHASE_ONE = 500000000000000000000;
+    uint256 public constant REWARDS_PHASE_TWO = 625000000000000000000; 
+    uint256 public constant REWARDS_PHASE_THREE = 625000000000000000000; 
+    uint256 public constant REWARDS_PHASE_FOUR = 750000000000000000000; 
+    uint256 public constant PHASE_ONE_BLOCK = 4; 
+    uint256 public constant PHASE_TWO_BLOCK = 8; 
+    uint256 public constant PHASE_THREE_BLOCK = 12; 
+    uint256 public constant PHASE_FOUR_BLOCK = 16;
     
     IERC20 public immutable stakingToken;
 
     uint256 private _lastUpdatedBlockNumber;
     uint256 public immutable firstBlockNumber;
     uint256 private _totalRewardsSupply;
+    uint256 public _totalRewardsAllocated;
     uint256 public _totalStaked;
-    uint256 private _totalStakedTemp;
 
-    mapping(address => uint256) private _balances;
+    mapping(address => uint256) private _stakedBalances;
+    mapping(address => uint256) private _rewardBalances;
     mapping(address => bool) private _addressInserted;
     address[] private _addresses;
 
     constructor(address _stakingToken, uint256 _rewardsSupply) {
         stakingToken = IERC20(_stakingToken);
         _totalRewardsSupply = _rewardsSupply;
-        firstBlockNumber = block.number;
-        _lastUpdatedBlockNumber = block.number;
+        firstBlockNumber = block.number.add(120);
+        _lastUpdatedBlockNumber = block.number.add(120);
     }
 
     modifier isValidAccount(address _account) {
@@ -51,125 +55,115 @@ contract StakingRewards is ReentrancyGuard {
         _;
     }
 
-    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) returns (uint256) {
+    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) returns (uint256, uint256, uint256) {
+        uint256 newUserReward = _calculateNewRewardAmount(_account);
         _updateReward();
-        emit RewardsCalculatedOf(_balances[_account], _account);
-        return _balances[_account];
+        emit RewardsCalculatedOf(_stakedBalances[_account], _rewardBalances[_account], newUserReward, _account);
+        return (_stakedBalances[_account], _rewardBalances[_account], newUserReward);
     }
 
-    function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256) {
-        return _balances[_account];
+    function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256, uint256, uint256) {
+        uint256 newUserReward = _calculateNewRewardAmount(_account);
+        return (_stakedBalances[_account], _rewardBalances[_account], newUserReward);
     } 
 
-    function _calculateReward(address _user) private {
-        if (_totalRewardsSupply <= 0) {
-            return;
-        }
-        uint256 userBalance = _balances[_user];
-        if (userBalance <= 0) {
-            return;
-        }
-        uint256 phase = block.number - firstBlockNumber;
-        uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
-        (uint256 currentRate,) = _getRewardPhaseRate(phase);
-        (uint256 previousPhaseRate, uint256 previousRateLimit) = _getRewardPhaseRate(_lastUpdatedBlockNumber - firstBlockNumber + 1);
-        uint256 previousPhaseRewards;
-        uint256 previousBlocksToCalculate;
-
-        //Check if there are blocks to calculate from a previous phase
-        if (currentRate != previousPhaseRate) {
-            previousBlocksToCalculate = previousRateLimit.sub(_lastUpdatedBlockNumber.sub(firstBlockNumber));
-            previousPhaseRewards = _rewardPerBlock(userBalance, previousPhaseRate, previousBlocksToCalculate); 
-            blocksToCalculate -= previousBlocksToCalculate;
-        } 
-
-        uint256 rewards = _rewardPerBlock(userBalance, currentRate, blocksToCalculate);
-        uint256 newBalance = userBalance.add(rewards).add(previousPhaseRewards);
-        _balances[_user] = newBalance;
-        _totalStakedTemp += newBalance;
-    }
-
-    function _getReward(address _user)
-        private
-        view
-        returns (uint256 newBalance)
-    {
-        uint256 userBalance = _balances[_user];
-        if (userBalance <= 0) {
-            return uint256(0);
-        }
-        uint256 phase = block.number - firstBlockNumber;
-        uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
-        (uint256 currentRate, ) = _getRewardPhaseRate(phase);
-        (
-            uint256 previousPhaseRate,
-            uint256 previousRateLimit
-        ) = _getRewardPhaseRate(_lastUpdatedBlockNumber - firstBlockNumber + 1);
-        uint256 previousPhaseRewards;
-        uint256 previousBlocksToCalculate;
-
-        //Check if there are blocks to calculate from a previous phase
-        if (currentRate != previousPhaseRate) {
-            previousBlocksToCalculate = previousRateLimit.sub(
-                _lastUpdatedBlockNumber.sub(firstBlockNumber)
-            );
-            previousPhaseRewards = _rewardPerBlock(
-                userBalance,
-                previousPhaseRate,
-                previousBlocksToCalculate
-            );
-        }
-        uint256 rewards = _rewardPerBlock(
-            userBalance,
-            currentRate,
-            blocksToCalculate
-        );
-        newBalance = userBalance.add(rewards).add(previousPhaseRewards);
-        return newBalance;
-    }
-
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
-        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked);
+        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked + _totalRewardsAllocated);
         return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
-    }    
-
-    function getReward(address _user) external view returns (uint256 reward) {
-        reward = _getReward(_user);
-        return reward;
     }
 
-    function _getRewardPhaseRate(uint256 _blockNumber) private pure returns (uint256 rate, uint256 phaseLimit) {
-        if (_blockNumber <= PHASE_ONE_BLOCK) {
-            return (REWARDS_PHASE_ONE, PHASE_ONE_BLOCK);
+    function _getRewardPhaseRate(uint256 _relativeBlockNumber) private pure returns (uint256 rate, uint256 phaseLimit, uint256) {
+        if (_relativeBlockNumber == 0) {
+            return (0, 0, 0);
         }
 
-        if (_blockNumber <= PHASE_TWO_BLOCK) {
-            return (REWARDS_PHASE_TWO, PHASE_TWO_BLOCK);
+        if (_relativeBlockNumber <= PHASE_ONE_BLOCK) {
+            return (REWARDS_PHASE_ONE, PHASE_ONE_BLOCK, 1);
         }
 
-        if (_blockNumber <= PHASE_THREE_BLOCK) {
-            return (REWARDS_PHASE_THREE, PHASE_THREE_BLOCK);
+        if (_relativeBlockNumber <= PHASE_TWO_BLOCK) {
+            return (REWARDS_PHASE_TWO, PHASE_TWO_BLOCK, 2);
         }
 
-        if (_blockNumber <= PHASE_FOUR_BLOCK) {
-            return (REWARDS_PHASE_FOUR, PHASE_FOUR_BLOCK);
+        if (_relativeBlockNumber <= PHASE_THREE_BLOCK) {
+            return (REWARDS_PHASE_THREE, PHASE_THREE_BLOCK, 3);
         }
 
-        return (0, 0);
+        return (REWARDS_PHASE_FOUR, PHASE_FOUR_BLOCK, 4);
+    }
+
+    function _calculateNewRewardAmount(address _user) private view returns (uint256) {
+
+        if (_totalRewardsSupply <= 0 || block.number <= firstBlockNumber || _lastUpdatedBlockNumber >= PHASE_FOUR_BLOCK + firstBlockNumber) {
+            return 0;
+        }
+
+        uint256 stakedUserBalance = _stakedBalances[_user];
+        uint256 rewardedUserBalance = _rewardBalances[_user];
+        uint256 combinedUserBalance = stakedUserBalance + rewardedUserBalance;
+
+        if (stakedUserBalance <= 0) {
+            return 0;
+        }
+
+        (uint256 currentRate, , uint256 currentPhase) = _getRewardPhaseRate(block.number - firstBlockNumber);
+
+        // how many blocks from each phase have passed since the last updated block
+        // calculate user reward for the amount of blocks in each phase missed
+
+        uint256 lastRelativeBlockNumber = _lastUpdatedBlockNumber - firstBlockNumber;
+
+        (uint256 lastUpdatedPhaseRate, uint256 lastUpdatedRateLimit, uint256 lastUpdatedPhase) = _getRewardPhaseRate(lastRelativeBlockNumber);
+
+        if (block.number <= PHASE_ONE_BLOCK + firstBlockNumber) {
+            return _rewardPerBlock(combinedUserBalance, currentRate, block.number - _lastUpdatedBlockNumber);
+        }
+
+        uint256 totalNewRewards = 0;
+        uint256 tempRelativeBlockNumber = lastRelativeBlockNumber;
+        uint256 tempBlocksToCalculate = lastUpdatedRateLimit - lastRelativeBlockNumber;
+        uint256 tempBlocksLeft = block.number - (tempRelativeBlockNumber + firstBlockNumber);
+
+        uint256 tempPhaseRate = lastUpdatedPhaseRate;
+        uint256 tempRateLimit = lastUpdatedRateLimit;
+
+        for (uint256 i = lastUpdatedPhase; i <= currentPhase; i++) {
+            if (tempBlocksToCalculate > tempBlocksLeft) {
+                tempBlocksToCalculate = tempBlocksLeft;
+            }
+
+            totalNewRewards += _rewardPerBlock(combinedUserBalance, tempPhaseRate, tempBlocksToCalculate);
+            tempRelativeBlockNumber += tempBlocksToCalculate;
+            (tempPhaseRate, tempRateLimit, ) = _getRewardPhaseRate(tempRelativeBlockNumber + 1);
+            tempBlocksToCalculate = tempRateLimit - tempRelativeBlockNumber;
+            tempBlocksLeft = block.number - (tempRelativeBlockNumber + firstBlockNumber);
+        }
+
+        return totalNewRewards;
+    }
+
+    function getReward(address _user) external view returns (uint256) {
+        return _calculateNewRewardAmount(_user);
     }
 
     function _updateReward() internal {
         if (block.number <= _lastUpdatedBlockNumber) {
             return;
         }
-        for (uint256 i = 0; i < this.getAddressesSize(); i++){
-            _calculateReward(_addresses[i]);
-        }
-        _lastUpdatedBlockNumber = block.number;
-        _totalStaked = _totalStakedTemp;
-        _totalStakedTemp = 0;
 
-        emit RewardsCalculated(_totalStaked);
+        uint256 totalStakedPlusRewards = _totalStaked + _totalRewardsAllocated;
+        uint256 totalNewRewards = 0;
+        uint256 totalUserBalances = 0;
+        for (uint256 i = 0; i < this.getAddressesSize(); i++){
+            totalUserBalances += _stakedBalances[_addresses[i]] + _rewardBalances[_addresses[i]];
+            uint256 newUserRewards = _calculateNewRewardAmount(_addresses[i]);
+            _rewardBalances[_addresses[i]] = _rewardBalances[_addresses[i]] + newUserRewards;
+            totalNewRewards += newUserRewards;
+        }
+
+        _totalRewardsAllocated += totalNewRewards;
+        _lastUpdatedBlockNumber = block.number;
+        emit RewardsCalculated(_totalRewardsAllocated, totalUserBalances, totalStakedPlusRewards);
     }
 
     function updateReward() external {
@@ -180,29 +174,32 @@ contract StakingRewards is ReentrancyGuard {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
-        _totalStaked += _amount;
-        _totalRewardsSupply += _amount;
-        _balances[msg.sender] += _amount;
+        _totalStaked += _amount; // initial stake
+        _stakedBalances[msg.sender] += _amount;
         addAddress(msg.sender);
-
         emit Stake(msg.sender, _amount);
     }
 
     function withdraw() external nonReentrant isValidAccount(msg.sender) {
         _updateReward();
-        uint256 amount = _balances[msg.sender];
-        require(amount > 0, "Current balance is 0");
+        uint256 stakedAmount = _stakedBalances[msg.sender];
+        uint256 rewardAmount = _rewardBalances[msg.sender];
+        uint256 totalAmount = stakedAmount + rewardAmount;
+        require(totalAmount > 0, "Current balance is 0");
 
-        if (amount > _totalRewardsSupply) {
-            amount = _totalRewardsSupply;
+        if (totalAmount > _totalRewardsSupply) {
+            totalAmount = _totalRewardsSupply;
         }
 
-        _balances[msg.sender] = 0;
-        _totalStaked -= amount;
-        _totalRewardsSupply -= amount;
-        stakingToken.safeTransfer(msg.sender, amount);
+        _totalStaked -= stakedAmount;
+        _totalRewardsSupply -= rewardAmount;
+        _totalRewardsAllocated -= rewardAmount;
+        _stakedBalances[msg.sender] = 0;
+        _rewardBalances[msg.sender] = 0;
 
-        emit Withdraw(msg.sender, amount);
+        stakingToken.safeTransfer(msg.sender, stakedAmount);
+        stakingToken.safeTransfer(msg.sender, rewardAmount);
+        emit Withdraw(msg.sender, stakedAmount, rewardAmount);
     }
 
     function addAddress(address account) internal {

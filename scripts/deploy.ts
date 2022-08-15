@@ -41,9 +41,39 @@ const { FEE_RECIPIENT_ADDRESS, PLATFORM_FEE, OGUN_TOKEN_ADDRESS_MUMBAI, REWARDS_
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const main = async () => {
+
+  console.log("💡 Deploying SoundchainOGUN20");
+  const SoundchainOGUN20 = await ethers.getContractFactory("SoundchainOGUN20");
+  const SoundchainOGUN20DeployTransaction = SoundchainOGUN20.getDeployTransaction();
+  const SoundchainOGUN20Signed = await getSignedTransaction(
+    SoundchainOGUN20DeployTransaction.data
+  );
+  const SoundchainOGUN20Receipt = await sendSignedTransaction(
+    SoundchainOGUN20Signed.raw
+  );
+  console.log(
+    `✅ SoundchainOGUN20 deployed to address: ${SoundchainOGUN20Receipt.contractAddress}`
+  );
+
+  const contractAddressOGUNToken = SoundchainOGUN20Receipt.contractAddress;
+
+  console.log("💡 Deploying StakingRewards");
+  const totalOGUNStaking = web3.utils.toWei('200000000'); // 200 million
+  const StakingRewards = await ethers.getContractFactory("StakingRewards");
+  const StakingRewardsDeployTransaction = StakingRewards.getDeployTransaction(contractAddressOGUNToken, totalOGUNStaking);
+  const StakingRewardsSigned = await getSignedTransaction(
+    StakingRewardsDeployTransaction.data
+  );
+  const StakingRewardsReceipt = await sendSignedTransaction(
+    StakingRewardsSigned.raw
+  );
+  console.log(
+    `✅ StakingRewards deployed to address: ${StakingRewardsReceipt.contractAddress}`
+  );
+
   console.log("💡 Deploying Airdrop Contract");
   const AirDropContract = await ethers.getContractFactory("MerkleClaimERC20");
-  const airdropTransaction = AirDropContract.getDeployTransaction(OGUN_TOKEN_ADDRESS_MUMBAI, MERKLE_ROOT);
+  const airdropTransaction = AirDropContract.getDeployTransaction(contractAddressOGUNToken, MERKLE_ROOT);
   const airdropSigned = await getSignedTransaction(
       airdropTransaction.data
   );
@@ -72,7 +102,7 @@ const main = async () => {
   );
   const marketplaceDeployTransaction = MarketplaceFactory.getDeployTransaction(
     FEE_RECIPIENT_ADDRESS,
-    OGUN_TOKEN_ADDRESS_MUMBAI,
+    contractAddressOGUNToken,
     PLATFORM_FEE,
     REWARDS_RATE,
     REWARDS_LIMIT
@@ -89,7 +119,7 @@ const main = async () => {
   const AuctionFactory = await ethers.getContractFactory("SoundchainAuction");
   const auctionDeployTransaction = AuctionFactory.getDeployTransaction(
     FEE_RECIPIENT_ADDRESS,
-    OGUN_TOKEN_ADDRESS_MUMBAI,
+    contractAddressOGUNToken,
     PLATFORM_FEE,
     REWARDS_RATE,
     REWARDS_LIMIT
@@ -108,8 +138,22 @@ const main = async () => {
   console.log("🪄  Verifying contracts");
 
   await run("verify:verify", {
+    address: SoundchainOGUN20Receipt.contractAddress,
+    constructorArguments: [],
+  });
+
+  console.log("✅ SoundchainOGUN20Contract verified on Etherscan");
+
+  await run("verify:verify", {
+    address: StakingRewardsReceipt.contractAddress,
+    constructorArguments: [ contractAddressOGUNToken, totalOGUNStaking ],
+  });
+
+  console.log("✅ StakingRewardsContract verified on Etherscan");
+
+  await run("verify:verify", {
     address: airdropReceipt.contractAddress,
-    constructorArguments: [ OGUN_TOKEN_ADDRESS_MUMBAI, MERKLE_ROOT ],
+    constructorArguments: [ contractAddressOGUNToken, MERKLE_ROOT ],
   });
 
   console.log("✅ AirDropContract verified on Etherscan");
@@ -129,7 +173,7 @@ const main = async () => {
     constructorArguments:
     [
       FEE_RECIPIENT_ADDRESS,
-      OGUN_TOKEN_ADDRESS_MUMBAI,
+      contractAddressOGUNToken,
       PLATFORM_FEE,
       REWARDS_RATE,
       REWARDS_LIMIT
@@ -142,7 +186,7 @@ const main = async () => {
     constructorArguments:
     [
       FEE_RECIPIENT_ADDRESS,
-      OGUN_TOKEN_ADDRESS_MUMBAI,
+      contractAddressOGUNToken,
       PLATFORM_FEE,
       REWARDS_RATE,
       REWARDS_LIMIT
