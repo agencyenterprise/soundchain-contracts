@@ -151,6 +151,22 @@ describe("Staking", () => {
         const etherNumber = ethers.utils.formatEther(reward);
         expect(etherNumber).to.eq("0.0");
       });
+
+      it("should allow users to stake and withdraw multiple times", async function () {
+        const blocksToMove = 122 - (await getCurrentBlock());
+        await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+        await stake.connect(user1).stake(transfer10k);
+        await network.provider.send('hardhat_mine', ["0x9"]);
+        await stake.connect(user1).withdraw();
+        await network.provider.send('hardhat_mine', ["0x9"]);
+        await stake.connect(user1).stake(transfer10k);
+        await network.provider.send('hardhat_mine', ["0x9"]);
+        await stake.connect(user1).withdraw();
+        await network.provider.send('hardhat_mine', ["0x9"]);
+        await stake.connect(user1).stake(transfer10k);
+        await network.provider.send('hardhat_mine', ["0x9"]);
+        await stake.connect(user1).withdraw();
+      });
     });
 
     describe("Stake calculation for different phases with just 1 user", () => {
