@@ -2,7 +2,7 @@
  * ###################### DISCLAIMER PLEASE READ BEFORE EXECUTING ######################
  * This script allows you to update the reward fee of the marketplace contract
  * be sure to update it accordingly and in balance with the platform fee to prevent
- * white washing, meaning, the rewards can't be higher than the platform fee otherwise
+ * wash trading, meaning, the rewards can't be higher than the platform fee otherwise
  * users will be able to earn infinite money from trading with themselves.
  * #####################################################################################
  */
