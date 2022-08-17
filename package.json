@@ -11,6 +11,7 @@
     "deploy-lp:mainnet": "npx hardhat run scripts/deployLPRewards.ts --network polygon",
     "send-ogun:testnet": "npx hardhat run scripts/sendOGUN.ts --network mumbai",
     "send-ogun:mainnet": "npx hardhat run scripts/sendOGUN.ts --network polygon",
+    "updateFeeRewards:mainnet": "npx hardhat run scripts/updateFeeRewards.ts --network polygon",
     "test": "npx hardhat test",
     "coverage": "npx hardhat coverage",
     "generate-types": "npx typechain --target=web3-v1 'abi/contracts/**/*.json'"
