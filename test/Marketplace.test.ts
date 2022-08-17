@@ -337,7 +337,7 @@ describe("marketplace", () => {
         marketplace
           .connect(buyer)
           .buyItem(nft.address, firstTokenId, safeMinter.address, false)
-      ).to.be.revertedWith("insufficient balance to buy");
+      ).to.be.revertedWith("insufficient MATIC balance to buy");
     });
 
     it("reverts when the amount of OGUN is not enough", async () => {
@@ -346,7 +346,7 @@ describe("marketplace", () => {
         marketplace
           .connect(buyer)
           .buyItem(nft.address, firstTokenId, safeMinter.address, true)
-      ).to.be.revertedWith("insufficient balance to buy");
+      ).to.be.revertedWith("insufficient OGUN balance to buy");
     });
 
     it("successfully purchase item with MATIC", async () => {
