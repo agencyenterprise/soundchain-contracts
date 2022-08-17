@@ -22,7 +22,8 @@ contract LiquidityPoolRewards is ReentrancyGuard {
     event RewardsCalculatedOf(uint256 balance, uint256 rewards,address account);
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant REWARDS_RATE = 20000000000000000000; // 20.0 
+    uint256 public constant REWARDS_RATE = 5000000000000000000; // 5.0
+    uint256 public constant TOTAL_BLOCKS = 20000000; // 20 million
     
     IERC20 public immutable OGUNToken;
     IERC20 public immutable lpToken;
@@ -68,9 +69,9 @@ contract LiquidityPoolRewards is ReentrancyGuard {
             return;
         }
         uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
-        //Calculate blocks under 1000000
-        if (block.number - firstBlockNumber > 1000000) {
-          blocksToCalculate = 1000000 - (_lastUpdatedBlockNumber - firstBlockNumber);
+        //Calculate blocks under TOTAL_BLOCKS
+        if (block.number - firstBlockNumber > TOTAL_BLOCKS) {
+          blocksToCalculate = TOTAL_BLOCKS - (_lastUpdatedBlockNumber - firstBlockNumber);
         }
 
         uint256 rewards = _rewardPerBlock(userLpBalance, REWARDS_RATE, blocksToCalculate);
@@ -88,10 +89,10 @@ contract LiquidityPoolRewards is ReentrancyGuard {
             return uint256(0);
         }
         uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
-        //Calculate blocks under 1000000
-        if (block.number - firstBlockNumber > 1000000) {
+        //Calculate blocks under TOTAL_BLOCKS
+        if (block.number - firstBlockNumber > TOTAL_BLOCKS) {
             blocksToCalculate =
-                1000000 -
+                TOTAL_BLOCKS -
                 (_lastUpdatedBlockNumber - firstBlockNumber);
         }
         reward = _rewardPerBlock(
@@ -116,7 +117,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
           return;
         }
 
-        if (_lastUpdatedBlockNumber - firstBlockNumber > 1000000){
+        if (_lastUpdatedBlockNumber - firstBlockNumber > TOTAL_BLOCKS){
           return;
         }
 
@@ -138,7 +139,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
     function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Stake: Amount must be greater than 0");
-        require(block.number - firstBlockNumber < 1000000, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
+        require(block.number - firstBlockNumber < TOTAL_BLOCKS, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
         totalLpStaked += _amount;
