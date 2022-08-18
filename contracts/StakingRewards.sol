@@ -68,7 +68,7 @@ contract StakingRewards is ReentrancyGuard {
     } 
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
-        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked + _totalRewardsAllocated);
+        uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked.add(_totalRewardsAllocated));
         return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
     }
 
@@ -94,35 +94,35 @@ contract StakingRewards is ReentrancyGuard {
 
     function _calculateNewRewardAmount(address _user) private view returns (uint256) {
 
-        if (_totalRewardsSupply <= 0 || block.number <= firstBlockNumber || _lastUpdatedBlockNumber >= PHASE_FOUR_BLOCK + firstBlockNumber) {
+        if (_totalRewardsSupply <= 0 || block.number <= firstBlockNumber || _lastUpdatedBlockNumber >= PHASE_FOUR_BLOCK.add(firstBlockNumber)) {
             return 0;
         }
 
         uint256 stakedUserBalance = _stakedBalances[_user];
         uint256 rewardedUserBalance = _rewardBalances[_user];
-        uint256 combinedUserBalance = stakedUserBalance + rewardedUserBalance;
+        uint256 combinedUserBalance = stakedUserBalance.add(rewardedUserBalance);
 
         if (stakedUserBalance <= 0) {
             return 0;
         }
 
-        (uint256 currentRate, , uint256 currentPhase) = _getRewardPhaseRate(block.number - firstBlockNumber);
+        (uint256 currentRate, , uint256 currentPhase) = _getRewardPhaseRate(block.number.sub(firstBlockNumber));
 
         // how many blocks from each phase have passed since the last updated block
         // calculate user reward for the amount of blocks in each phase missed
 
-        uint256 lastRelativeBlockNumber = _lastUpdatedBlockNumber - firstBlockNumber;
+        uint256 lastRelativeBlockNumber = _lastUpdatedBlockNumber.sub(firstBlockNumber);
 
         (uint256 lastUpdatedPhaseRate, uint256 lastUpdatedRateLimit, uint256 lastUpdatedPhase) = _getRewardPhaseRate(lastRelativeBlockNumber);
 
-        if (block.number <= PHASE_ONE_BLOCK + firstBlockNumber) {
-            return _rewardPerBlock(combinedUserBalance, currentRate, block.number - _lastUpdatedBlockNumber);
+        if (block.number <= PHASE_ONE_BLOCK.add(firstBlockNumber)) {
+            return _rewardPerBlock(combinedUserBalance, currentRate, block.number.sub(_lastUpdatedBlockNumber));
         }
 
         uint256 totalNewRewards = 0;
         uint256 tempRelativeBlockNumber = lastRelativeBlockNumber;
-        uint256 tempBlocksToCalculate = lastUpdatedRateLimit - lastRelativeBlockNumber;
-        uint256 tempBlocksLeft = block.number - (tempRelativeBlockNumber + firstBlockNumber);
+        uint256 tempBlocksToCalculate = lastUpdatedRateLimit.sub(lastRelativeBlockNumber);
+        uint256 tempBlocksLeft = block.number.sub(tempRelativeBlockNumber.add(firstBlockNumber));
 
         uint256 tempPhaseRate = lastUpdatedPhaseRate;
         uint256 tempRateLimit = lastUpdatedRateLimit;
@@ -132,18 +132,18 @@ contract StakingRewards is ReentrancyGuard {
                 tempBlocksToCalculate = tempBlocksLeft;
             }
 
-            totalNewRewards += _rewardPerBlock(combinedUserBalance, tempPhaseRate, tempBlocksToCalculate);
-            tempRelativeBlockNumber += tempBlocksToCalculate;
-            (tempPhaseRate, tempRateLimit, ) = _getRewardPhaseRate(tempRelativeBlockNumber + 1);
-            tempBlocksToCalculate = tempRateLimit - tempRelativeBlockNumber;
-            tempBlocksLeft = block.number - (tempRelativeBlockNumber + firstBlockNumber);
+            totalNewRewards = totalNewRewards.add(_rewardPerBlock(combinedUserBalance, tempPhaseRate, tempBlocksToCalculate));
+            tempRelativeBlockNumber = tempRelativeBlockNumber.add(tempBlocksToCalculate);
+            (tempPhaseRate, tempRateLimit, ) = _getRewardPhaseRate(tempRelativeBlockNumber.add(1));
+            tempBlocksToCalculate = tempRateLimit.sub(tempRelativeBlockNumber);
+            tempBlocksLeft = block.number.sub(tempRelativeBlockNumber.add(firstBlockNumber));
         }
 
         return totalNewRewards;
     }
 
     function getReward(address _user) external view returns (uint256) {
-        return _rewardBalances[_user] + _calculateNewRewardAmount(_user);
+        return _rewardBalances[_user].add(_calculateNewRewardAmount(_user));
     }
 
     function _updateReward() internal {
@@ -151,17 +151,17 @@ contract StakingRewards is ReentrancyGuard {
             return;
         }
 
-        uint256 totalStakedPlusRewards = _totalStaked + _totalRewardsAllocated;
+        uint256 totalStakedPlusRewards = _totalStaked.add(_totalRewardsAllocated);
         uint256 totalNewRewards = 0;
         uint256 totalUserBalances = 0;
         for (uint256 i = 0; i < this.getAddressesSize(); i++){
-            totalUserBalances += _stakedBalances[_addresses[i]] + _rewardBalances[_addresses[i]];
+            totalUserBalances = totalUserBalances.add(_stakedBalances[_addresses[i]].add(_rewardBalances[_addresses[i]]));
             uint256 newUserRewards = _calculateNewRewardAmount(_addresses[i]);
-            _rewardBalances[_addresses[i]] = _rewardBalances[_addresses[i]] + newUserRewards;
-            totalNewRewards += newUserRewards;
+            _rewardBalances[_addresses[i]] = _rewardBalances[_addresses[i]].add(newUserRewards);
+            totalNewRewards = totalNewRewards.add(newUserRewards);
         }
 
-        _totalRewardsAllocated += totalNewRewards;
+        _totalRewardsAllocated = _totalRewardsAllocated.add(totalNewRewards);
         _lastUpdatedBlockNumber = block.number;
         emit RewardsCalculated(_totalRewardsAllocated, totalUserBalances, totalStakedPlusRewards);
     }
@@ -174,8 +174,8 @@ contract StakingRewards is ReentrancyGuard {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
-        _totalStaked += _amount; // initial stake
-        _stakedBalances[msg.sender] += _amount;
+        _totalStaked = _totalStaked.add(_amount); // initial stake
+        _stakedBalances[msg.sender] = _stakedBalances[msg.sender].add(_amount);
         addAddress(msg.sender);
         emit Stake(msg.sender, _amount);
     }
@@ -184,16 +184,16 @@ contract StakingRewards is ReentrancyGuard {
         _updateReward();
         uint256 stakedAmount = _stakedBalances[msg.sender];
         uint256 rewardAmount = _rewardBalances[msg.sender];
-        uint256 totalAmount = stakedAmount + rewardAmount;
+        uint256 totalAmount = stakedAmount.add(rewardAmount);
         require(totalAmount > 0, "Current balance is 0");
 
         if (totalAmount > _totalRewardsSupply) {
             totalAmount = _totalRewardsSupply;
         }
 
-        _totalStaked -= stakedAmount;
-        _totalRewardsSupply -= rewardAmount;
-        _totalRewardsAllocated -= rewardAmount;
+        _totalStaked = _totalStaked.sub(stakedAmount);
+        _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
+        _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
         _stakedBalances[msg.sender] = 0;
         _rewardBalances[msg.sender] = 0;
 
