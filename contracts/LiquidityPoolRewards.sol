@@ -68,14 +68,14 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         if (userLpBalance <= 0) {
             return;
         }
-        uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
+        uint256 blocksToCalculate = block.number.sub(_lastUpdatedBlockNumber);
         //Calculate blocks under TOTAL_BLOCKS
-        if (block.number - firstBlockNumber > TOTAL_BLOCKS) {
-          blocksToCalculate = TOTAL_BLOCKS - (_lastUpdatedBlockNumber - firstBlockNumber);
+        if (block.number.sub(firstBlockNumber) > TOTAL_BLOCKS) {
+          blocksToCalculate = TOTAL_BLOCKS.sub(_lastUpdatedBlockNumber.sub(firstBlockNumber));
         }
 
         uint256 rewards = _rewardPerBlock(userLpBalance, REWARDS_RATE, blocksToCalculate);
-        _OGUNrewards[_user] += rewards; 
+        _OGUNrewards[_user] = _OGUNrewards[_user].add(rewards);
     }
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
@@ -88,12 +88,10 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         if (userLpBalance <= 0) {
             return uint256(0);
         }
-        uint256 blocksToCalculate = block.number - _lastUpdatedBlockNumber;
+        uint256 blocksToCalculate = block.number.sub(_lastUpdatedBlockNumber);
         //Calculate blocks under TOTAL_BLOCKS
-        if (block.number - firstBlockNumber > TOTAL_BLOCKS) {
-            blocksToCalculate =
-                TOTAL_BLOCKS -
-                (_lastUpdatedBlockNumber - firstBlockNumber);
+        if (block.number.sub(firstBlockNumber) > TOTAL_BLOCKS) {
+            blocksToCalculate = TOTAL_BLOCKS.sub(_lastUpdatedBlockNumber.sub(firstBlockNumber));
         }
         reward = _rewardPerBlock(
             userLpBalance,
@@ -117,7 +115,7 @@ contract LiquidityPoolRewards is ReentrancyGuard {
           return;
         }
 
-        if (_lastUpdatedBlockNumber - firstBlockNumber > TOTAL_BLOCKS){
+        if (_lastUpdatedBlockNumber.sub(firstBlockNumber) > TOTAL_BLOCKS){
           return;
         }
 
@@ -139,11 +137,11 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
     function stake(uint256 _amount) external nonReentrant {
         require(_amount > 0, "Stake: Amount must be greater than 0");
-        require(block.number - firstBlockNumber < TOTAL_BLOCKS, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
+        require(block.number.sub(firstBlockNumber) < TOTAL_BLOCKS, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
         _updateReward();
-        totalLpStaked += _amount;
-        _lpBalances[msg.sender] += _amount;
+        totalLpStaked = totalLpStaked.add(_amount);
+        _lpBalances[msg.sender] = _lpBalances[msg.sender].add(_amount);
         addAddress(msg.sender);
 
         emit Stake(msg.sender, _amount);
@@ -161,8 +159,8 @@ contract LiquidityPoolRewards is ReentrancyGuard {
 
         _lpBalances[msg.sender] = 0;
         _OGUNrewards[msg.sender] = 0;
-        totalLpStaked -= lpAmount;
-        _totalRewardsSupply -= rewardsAmount;
+        totalLpStaked = totalLpStaked.sub(lpAmount);
+        _totalRewardsSupply = _totalRewardsSupply.sub(rewardsAmount);
         lpToken.safeTransfer(msg.sender, lpAmount);
         OGUNToken.safeTransfer(msg.sender, rewardsAmount);
 
