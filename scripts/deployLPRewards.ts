@@ -7,7 +7,7 @@ dotenv.config();
 
 const region = "us-east-1";
 
-const { AWS_KMS_KEY_ID, POLYGON_ALCHEMY_URL, CONTRACT_URI } = process.env;
+const { AWS_KMS_KEY_ID, POLYGON_ALCHEMY_URL, OGUN_TOKEN_ADDRESS, LP_TOKEN_ADDRESS } = process.env;
 
 const provider = new KmsProvider(POLYGON_ALCHEMY_URL, {
   region,
@@ -36,25 +36,9 @@ const sendSignedTransaction = async (signedTransaction) => {
   return await web3.eth.sendSignedTransaction(signedTransaction);
 };
 
-const { OGUN_TOKEN_ADDRESS, LP_TOKEN_ADDRESS } = process.env;
-
 const delay = (ms) => new Promise((res) => setTimeout(res, ms));
 
 const main = async () => {
-
-  // console.log("💡 Deploying StakingRewards");
-  // const totalOGUNStaking = web3.utils.toWei('10000'); // 200 million
-  // const StakingRewards = await ethers.getContractFactory("StakingRewards");
-  // const StakingRewardsDeployTransaction = StakingRewards.getDeployTransaction(OGUN_TOKEN_ADDRESS, totalOGUNStaking);
-  // const StakingRewardsSigned = await getSignedTransaction(
-  //   StakingRewardsDeployTransaction.data
-  // );
-  // const StakingRewardsReceipt = await sendSignedTransaction(
-  //   StakingRewardsSigned.raw
-  // );
-  // console.log(
-  //   `✅ StakingRewards deployed to address: ${StakingRewardsReceipt.contractAddress}`
-  // );
 
   console.log("💡 Deploying LiquidityPoolRewards");
   const totalOGUNLPStaking = web3.utils.toWei('100000000'); // 100 million
@@ -70,18 +54,17 @@ const main = async () => {
     `✅ LiquidityPoolRewards deployed to address: ${LiquidityPoolRewardsReceipt.contractAddress}`
   );
 
-  // console.log("⏰ Waiting confirmations");
-  // await delay(10000);
+  console.log("⏰ Waiting 10 seconds for confirmations...");
+  await delay(10000);
 
-  // console.log("🪄  Verifying contracts");
+  console.log("🪄 Verifying contracts");
 
-  // await run("verify:verify", {
-  //   address: LiquidityPoolRewardsReceipt.contractAddress,
-  //   constructorArguments: [ OGUN_TOKEN_ADDRESS, LP_TOKEN_ADDRESS, totalOGUNLPStaking],
-  // });
+  await run("verify:verify", {
+    address: LiquidityPoolRewardsReceipt.contractAddress,
+    constructorArguments: [ OGUN_TOKEN_ADDRESS, LP_TOKEN_ADDRESS, totalOGUNLPStaking],
+  });
 
-  // console.log("✅ LiquidityPoolRewardsContract verified on Etherscan");
-  
+  console.log("✅ LiquidityPoolRewardsContract verified on Etherscan");  
 };
 
 main()
