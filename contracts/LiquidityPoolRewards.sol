@@ -4,12 +4,13 @@ pragma solidity ^0.8;
 
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "hardhat/console.sol";
 
 
-contract LiquidityPoolRewards is ReentrancyGuard {
+contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
@@ -44,6 +45,12 @@ contract LiquidityPoolRewards is ReentrancyGuard {
         _totalRewardsSupply = _rewardsSupply;
         firstBlockNumber = block.number;
     } 
+
+    // withdraw ogun out of the contract with this method as the contract owner
+    function reclaimOgun(address destination) external onlyOwner {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
+    }
 
     modifier isValidAccount(address _account) {
         require(_addressInserted[_account], "address hasn't stake any tokens yet");

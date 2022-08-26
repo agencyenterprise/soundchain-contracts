@@ -54,17 +54,18 @@ const main = async () => {
     `✅ LiquidityPoolRewards deployed to address: ${LiquidityPoolRewardsReceipt.contractAddress}`
   );
 
-  console.log("⏰ Waiting 10 seconds for confirmations...");
-  await delay(10000);
-
-  console.log("🪄 Verifying contracts");
-
-  await run("verify:verify", {
-    address: LiquidityPoolRewardsReceipt.contractAddress,
-    constructorArguments: [ OGUN_TOKEN_ADDRESS, LP_TOKEN_ADDRESS, totalOGUNLPStaking],
-  });
-
-  console.log("✅ LiquidityPoolRewardsContract verified on Etherscan");  
+  // console.log("💡 Deploying TestContract");
+  // const TestContract = await ethers.getContractFactory("TestContract");
+  // const TestContractTx = TestContract.getDeployTransaction(OGUN_TOKEN_ADDRESS);
+  // const TestContractSigned = await getSignedTransaction(
+  //   TestContractTx.data
+  // );
+  // const LiquidityPoolRewardsReceipt = await sendSignedTransaction(
+  //   TestContractSigned.raw
+  // );
+  // console.log(
+  //   `✅ TestContract deployed to address: ${LiquidityPoolRewardsReceipt.contractAddress}`
+  // );
 };
 
 main()
