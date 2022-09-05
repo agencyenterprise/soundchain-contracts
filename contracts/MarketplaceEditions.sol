@@ -11,9 +11,9 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Address.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "./IEditions.sol";
 
-
-contract SoundchainMarketplace is Ownable, ReentrancyGuard {
+contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
     using Address for address payable;
@@ -56,6 +56,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         address indexed nft,
         uint256 tokenId
     );
+    event EditionListed(address indexed nft, uint256 editionId);
+    event EditionCanceled(address indexed nft, uint256 editionId);
     event UpdatePlatformFee(uint16 platformFee);
     event UpdatePlatformFeeRecipient(address payable platformFeeRecipient);
 
@@ -77,20 +79,21 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     mapping(address => mapping(uint256 => mapping(address => Listing)))
         public listings;
 
+    /// @notice NftAddress -> Edition Number -> True/False (Edition listed or not)
+    mapping(address => mapping(uint256 => bool)) public editionListings;
+
     /// @notice Platform fee
     uint16 public platformFee;
 
     /// @notice Platform fee recipient
     address payable public feeRecipient;
 
-
     modifier isListed(
         address _nftAddress,
         uint256 _tokenId,
         address _owner
     ) {
-        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
-        require(listing.quantity > 0, "not listed item");
+        require(_isListed(_nftAddress, _tokenId, _owner), "not listed item");
         _;
     }
 
@@ -99,8 +102,23 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         uint256 _tokenId,
         address _owner
     ) {
-        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
-        require(listing.quantity == 0, "already listed");
+        require(_notListed(_nftAddress, _tokenId, _owner), "already listed");
+        _;
+    }
+
+    modifier editionNotListed(address nftAddress, uint256 _editionNumber) {
+        require(
+            !editionListings[nftAddress][_editionNumber],
+            "edition already listed"
+        );
+        _;
+    }
+
+    modifier isEditionListed(address _nftAddress, uint256 _editionNumber) {
+        require(
+            editionListings[_nftAddress][_editionNumber],
+            "edition not listed item"
+        );
         _;
     }
 
@@ -120,17 +138,20 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         _;
     }
 
-
     /// @notice Contract constructor
-    constructor(address payable _feeRecipient, address _OGUNToken, uint16 _platformFee, uint256 _rewardsRate, uint256 _rewardsLimit) {
+    constructor(
+        address payable _feeRecipient,
+        address _OGUNToken,
+        uint16 _platformFee,
+        uint256 _rewardsRate,
+        uint256 _rewardsLimit
+    ) {
         OGUNToken = IERC20(_OGUNToken);
         platformFee = _platformFee;
         feeRecipient = _feeRecipient;
         rewardsRate = _rewardsRate;
         rewardsLimit = _rewardsLimit;
     }
-
-
 
     /// @notice Method for canceling listed NFT
     function cancelListing(address _nftAddress, uint256 _tokenId)
@@ -139,6 +160,55 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         isListed(_nftAddress, _tokenId, _msgSender())
     {
         _cancelListing(_nftAddress, _tokenId, _msgSender());
+    }
+
+    /// @notice Method for canceling Edition listed NFT
+    function cancelEditionListing(address _nftAddress, uint256 _editionNumber)
+        external
+        nonReentrant
+        isEditionListed(_nftAddress, _editionNumber)
+    {
+        IERC721 nft = IERC721(_nftAddress);
+        IEditions nftEdition = IEditions(_nftAddress);
+
+        uint256[] memory tokensFromEdition = nftEdition.getTokenIdsOfEdition(
+            _editionNumber
+        );
+
+        require(tokensFromEdition.length > 0, "edition has no tokens");
+
+        for (uint256 index = 0; index < tokensFromEdition.length; index++) {
+            if (nft.ownerOf(tokensFromEdition[index]) == _msgSender()) {
+                _cancelListing(
+                    _nftAddress,
+                    tokensFromEdition[index],
+                    _msgSender()
+                );
+            }
+        }
+        editionListings[_nftAddress][_editionNumber] = false;
+
+        emit EditionCanceled(_nftAddress, _editionNumber);
+    }
+
+    /// @notice Method for batch canceling listed NFT
+    function cancelListingBatch(address _nftAddress, uint256[] memory tokenIds)
+        external
+        nonReentrant
+    {
+        IERC721 nft = IERC721(_nftAddress);
+
+        require(tokenIds.length > 0, "tokenIds is empty");
+
+        for (uint256 index = 0; index < tokenIds.length; index++) {
+            if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
+                require(
+                    _isListed(_nftAddress, tokenIds[index], _msgSender()),
+                    "item not listed"
+                );
+                _cancelListing(_nftAddress, tokenIds[index], _msgSender());
+            }
+        }
     }
 
     /// @notice Method for updating listed NFT
@@ -208,10 +278,14 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
     {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
         if (_isPaymentOGUN) {
-            uint256 allowance = OGUNToken.allowance(_msgSender(), address(this));
+            uint256 allowance = OGUNToken.allowance(
+                _msgSender(),
+                address(this)
+            );
             require(
-                allowance >= listedItem.OGUNPricePerItem.mul(listedItem.quantity),
-                "insufficient balance to buy"
+                allowance >=
+                    listedItem.OGUNPricePerItem.mul(listedItem.quantity),
+                "insufficient OGUN balance to buy"
             );
             require(
                 listedItem.acceptsOGUN == true,
@@ -220,7 +294,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         } else {
             require(
                 msg.value >= listedItem.pricePerItem.mul(listedItem.quantity),
-                "insufficient balance to buy"
+                "insufficient MATIC balance to buy"
             );
             require(
                 listedItem.acceptsMATIC == true,
@@ -230,7 +304,6 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
 
         _buyItem(_nftAddress, _tokenId, _owner, _isPaymentOGUN);
     }
-
 
     function _buyItem(
         address _nftAddress,
@@ -258,7 +331,8 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         }
 
         // Royalty Fee payment
-        (address minter, uint256 royaltyFee) = IERC2981(_nftAddress).royaltyInfo(_tokenId, price - feeAmount);
+        (address minter, uint256 royaltyFee) = IERC2981(_nftAddress)
+            .royaltyInfo(_tokenId, price - feeAmount);
         if (minter != address(0)) {
             if (isPaymentOGUN) {
                 OGUNToken.safeTransferFrom(_msgSender(), minter, royaltyFee);
@@ -267,19 +341,25 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
                     value: royaltyFee
                 }("");
                 require(royaltyTransferSuccess, "royalty fee transfer failed");
-            }  
+            }
 
             feeAmount = feeAmount.add(royaltyFee);
         }
         // Owner payment
         if (isPaymentOGUN) {
-            OGUNToken.safeTransferFrom(_msgSender(), _owner, price.sub(feeAmount));
-            
+            OGUNToken.safeTransferFrom(
+                _msgSender(),
+                _owner,
+                price.sub(feeAmount)
+            );
+
             uint256 rewardValue = price.mul(rewardsRate).div(1e4);
             if (rewardValue > rewardsLimit) {
                 rewardValue = rewardsLimit;
             }
-            if(IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)) {
+            if (
+                IERC20(OGUNToken).balanceOf(address(this)) >= rewardValue.mul(2)
+            ) {
                 OGUNToken.safeTransfer(_owner, rewardValue);
                 OGUNToken.safeTransfer(_msgSender(), rewardValue);
             }
@@ -290,11 +370,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
             require(ownerTransferSuccess, "owner transfer failed");
         }
 
-        IERC721(_nftAddress).safeTransferFrom(
-            _owner,
-            _msgSender(),
-            _tokenId
-        );
+        IERC721(_nftAddress).safeTransferFrom(_owner, _msgSender(), _tokenId);
 
         emit ItemSold(
             _owner,
@@ -364,6 +440,143 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
         );
     }
 
+    /// @notice Method for batch listing NFT
+    /// @param editionNumber edition number
+    /// @param _pricePerItem sale price for each iteam
+    /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _acceptsMATIC true in case accepts MATIC as payment
+    /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _startingTime scheduling for a future sale
+    function listEdition(
+        address _nftEditionAddress,
+        uint256 editionNumber,
+        uint256 _pricePerItem,
+        uint256 _OGUNPricePerItem,
+        bool _acceptsMATIC,
+        bool _acceptsOGUN,
+        uint256 _startingTime
+    ) external editionNotListed(_nftEditionAddress, editionNumber) {
+        editionListings[_nftEditionAddress][editionNumber] = true;
+
+        require(
+            (_acceptsMATIC || _acceptsOGUN),
+            "item should have a way of payment"
+        );
+
+        if (
+            IERC165(_nftEditionAddress).supportsInterface(INTERFACE_ID_ERC721)
+        ) {
+            IERC721 nft = IERC721(_nftEditionAddress);
+            IEditions nftEdition = IEditions(_nftEditionAddress);
+
+            require(
+                nft.isApprovedForAll(_msgSender(), address(this)),
+                "item not approved"
+            );
+
+            uint256[] memory tokensFromEdition = nftEdition
+                .getTokenIdsOfEdition(editionNumber);
+
+            require(tokensFromEdition.length > 0, "edition has no tokens");
+
+            for (uint256 index = 0; index < tokensFromEdition.length; index++) {
+                if (nft.ownerOf(tokensFromEdition[index]) == _msgSender()) {
+                    listings[_nftEditionAddress][tokensFromEdition[index]][
+                        _msgSender()
+                    ] = Listing(
+                        1,
+                        _pricePerItem,
+                        _OGUNPricePerItem,
+                        _acceptsMATIC,
+                        _acceptsOGUN,
+                        _startingTime
+                    );
+                    emit ItemListed(
+                        _msgSender(),
+                        _nftEditionAddress,
+                        tokensFromEdition[index],
+                        1,
+                        _pricePerItem,
+                        _OGUNPricePerItem,
+                        _acceptsMATIC,
+                        _acceptsOGUN,
+                        _startingTime
+                    );
+                }
+            }
+
+            emit EditionListed(_nftEditionAddress, editionNumber);
+        } else {
+            revert("invalid nft address");
+        }
+    }
+
+    /// @notice Method for batch listing NFT
+    /// @param tokenIds all token IDs to list
+    /// @param _pricePerItem sale price for each iteam
+    /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _acceptsMATIC true in case accepts MATIC as payment
+    /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _startingTime scheduling for a future sale
+    function listBatch(
+        address _nftAddress,
+        uint256[] memory tokenIds,
+        uint256 _pricePerItem,
+        uint256 _OGUNPricePerItem,
+        bool _acceptsMATIC,
+        bool _acceptsOGUN,
+        uint256 _startingTime
+    ) external {
+        require(
+            (_acceptsMATIC || _acceptsOGUN),
+            "item should have a way of payment"
+        );
+
+        require(tokenIds.length > 0, "tokenIds is empty");
+
+        if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
+            IERC721 nft = IERC721(_nftAddress);
+
+            require(
+                nft.isApprovedForAll(_msgSender(), address(this)),
+                "item not approved"
+            );
+
+            for (uint256 index = 0; index < tokenIds.length; index++) {
+                if (nft.ownerOf(tokenIds[index]) == _msgSender()) {
+                    require(
+                        _notListed(_nftAddress, tokenIds[index], _msgSender()),
+                        "item already listed"
+                    );
+
+                    listings[_nftAddress][tokenIds[index]][
+                        _msgSender()
+                    ] = Listing(
+                        1,
+                        _pricePerItem,
+                        _OGUNPricePerItem,
+                        _acceptsMATIC,
+                        _acceptsOGUN,
+                        _startingTime
+                    );
+                    emit ItemListed(
+                        _msgSender(),
+                        _nftAddress,
+                        tokenIds[index],
+                        1,
+                        _pricePerItem,
+                        _OGUNPricePerItem,
+                        _acceptsMATIC,
+                        _acceptsOGUN,
+                        _startingTime
+                    );
+                }
+            }
+        } else {
+            revert("invalid nft address");
+        }
+    }
+
     /**
      @notice Method for updating platform fee
      @dev Only admin
@@ -392,10 +605,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
      @dev Only admin
      @param destination Where the OGUN will be sent
      */
-     function withdraw(address destination) 
-        external 
-        onlyOwner 
-    {
+    function withdraw(address destination) external onlyOwner {
         uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
         IERC20(OGUNToken).transfer(destination, balance);
     }
@@ -405,10 +615,7 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
      @dev Only admin
      @param _rewardsRate rate to be aplyed
      */
-    function setRewardsRate(uint256 _rewardsRate) 
-        public 
-        onlyOwner 
-    {
+    function setRewardsRate(uint256 _rewardsRate) public onlyOwner {
         rewardsRate = _rewardsRate;
     }
 
@@ -417,20 +624,34 @@ contract SoundchainMarketplace is Ownable, ReentrancyGuard {
      @dev Only admin
      @param newLimit Hardcap for rewards
      */
-     function setRewardsLimit(uint256 newLimit) 
-     external 
-     onlyOwner 
- {
-     rewardsLimit = newLimit;
- }
+    function setRewardsLimit(uint256 newLimit) external onlyOwner {
+        rewardsLimit = newLimit;
+    }
+
     ////////////////////////////
     /// Internal and Private ///
     ////////////////////////////
-    
-
 
     function _getNow() internal view virtual returns (uint256) {
         return block.timestamp;
+    }
+
+    function _isListed(
+        address _nftAddress,
+        uint256 _tokenId,
+        address _owner
+    ) private view returns (bool) {
+        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
+        return listing.quantity > 0;
+    }
+
+    function _notListed(
+        address _nftAddress,
+        uint256 _tokenId,
+        address _owner
+    ) private view returns (bool) {
+        Listing memory listing = listings[_nftAddress][_tokenId][_owner];
+        return listing.quantity == 0;
     }
 
     function _cancelListing(

@@ -6,6 +6,8 @@ import "@typechain/hardhat";
 import dotenv from "dotenv";
 import "hardhat-contract-sizer";
 import "hardhat-gas-reporter";
+import "hardhat-abi-exporter";
+
 import { HardhatUserConfig } from "hardhat/config";
 import "solidity-coverage";
 
@@ -31,9 +33,15 @@ const config: HardhatUserConfig = {
   paths: {
     tests: "./test",
   },
+  abiExporter: {
+    path: "./abi",
+    runOnCompile: true,
+    clear: true,
+    spacing: 2,
+  },
   networks: {
     mumbai: {
-      url: "https://polygon-mumbai.g.alchemy.com/v2/iRRgkrOCET0SiKBdl1aYA_TkV9-nI4WW",
+      url: "https://polygon-mumbai.g.alchemy.com/v2/PTbEov9b9XjfTgmiT9nuDM80Wl98Qg3t",
       accounts: [`0x${PRIVATE_KEY}`],
       gasPrice: 8000000000,
     },
