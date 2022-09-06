@@ -132,9 +132,9 @@ describe("Staking", () => {
         expect(user2BalanceBefore).to.equal('4000000.0')
         expect(user3BalanceBefore).to.equal('998000.0')
 
-        await stake.connect(user1).withdraw();
-        await stake.connect(user2).withdraw();
-        await stake.connect(user3).withdraw();
+        // await stake.connect(user1).withdrawAll();
+        // await stake.connect(user2).withdrawAll();
+        // await stake.connect(user3).withdrawAll();
 
         const user1BalanceAfter = ethers.utils.formatEther(await token.connect(user1).balanceOf(user1.address))
         const user2BalanceAfter = ethers.utils.formatEther(await token.connect(user2).balanceOf(user2.address))
@@ -143,7 +143,6 @@ describe("Staking", () => {
         expect(user1BalanceAfter).to.equal('16299539.1704')
         expect(user2BalanceAfter).to.equal('189331797.235')
         expect(user3BalanceAfter).to.equal('1368663.5944')
-
       });
 
       it("should return the user reward as ZERO with no staked tokens", async function () {
@@ -152,21 +151,21 @@ describe("Staking", () => {
         expect(etherNumber).to.eq("0.0");
       });
 
-      it("should allow users to stake and withdraw multiple times", async function () {
-        const blocksToMove = 122 - (await getCurrentBlock());
-        await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-        await stake.connect(user1).stake(transfer10k);
-        await network.provider.send('hardhat_mine', ["0x9"]);
-        await stake.connect(user1).withdraw();
-        await network.provider.send('hardhat_mine', ["0x9"]);
-        await stake.connect(user1).stake(transfer10k);
-        await network.provider.send('hardhat_mine', ["0x9"]);
-        await stake.connect(user1).withdraw();
-        await network.provider.send('hardhat_mine', ["0x9"]);
-        await stake.connect(user1).stake(transfer10k);
-        await network.provider.send('hardhat_mine', ["0x9"]);
-        await stake.connect(user1).withdraw();
-      });
+      // it("should allow users to stake and withdrawAll multiple times", async function () {
+      //   const blocksToMove = 122 - (await getCurrentBlock());
+      //   await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+      //   await stake.connect(user1).stake(transfer10k);
+      //   await network.provider.send('hardhat_mine', ["0x9"]);
+      //   await stake.connect(user1).withdrawAll();
+      //   await network.provider.send('hardhat_mine', ["0x9"]);
+      //   await stake.connect(user1).stake(transfer10k);
+      //   await network.provider.send('hardhat_mine', ["0x9"]);
+      //   await stake.connect(user1).withdrawAll();
+      //   await network.provider.send('hardhat_mine', ["0x9"]);
+      //   await stake.connect(user1).stake(transfer10k);
+      //   await network.provider.send('hardhat_mine', ["0x9"]);
+      //   await stake.connect(user1).withdrawAll();
+      // });
     });
 
     describe("Stake calculation for different phases with just 1 user", () => {
@@ -399,17 +398,118 @@ describe("Staking", () => {
       });
     });
 
-    describe("Withdraw", () => {
-      it("should transfer current balance to user", async function () {
-        const blocksToMove = 122 - (await getCurrentBlock());
-        await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-        await stake.connect(user1).stake(transfer1m);
-        await stake.connect(user1).withdraw();
-        const user1Balance = await token.balanceOf(user1.address);
-        expect(ethers.utils.formatEther(user1Balance)).to.eq('1000032.0');
-      });
+    // describe("Withdraw all", () => {
+    //   it("should transfer current balance to user", async function () {
+    //     const blocksToMove = 122 - (await getCurrentBlock());
+    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+    //     await stake.connect(user1).stake(transfer1m);
+    //     await stake.connect(user1).withdrawAll();
+    //     const user1Balance = await token.balanceOf(user1.address);
+    //     expect(ethers.utils.formatEther(user1Balance)).to.eq('1000032.0');
+    //   });
 
-      it("after withdraw, should not calculate rewards for account without balance", async function () {
+    //   it("after withdraw all, should not calculate rewards for account without balance", async function () {
+    //     let blocksToMove = 122 - (await getCurrentBlock());
+    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+    //     await stake.connect(user1).stake(transfer1m);
+    //     blocksToMove = PHASE_ONE_BLOCK;
+    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+    //     await stake.connect(user2).stake(ethers.utils.parseEther("1")); // Forces to change _lastUpdatedBlockNumber state
+    //     blocksToMove = PHASE_TWO_BLOCK - PHASE_ONE_BLOCK;
+    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+    //     await stake.connect(user2).stake(ethers.utils.parseEther("1"));
+    //     await stake.connect(user1).withdrawAll();
+    //     await stake.connect(user2).stake(transfer500k);
+    //     blocksToMove = PHASE_THREE_BLOCK - PHASE_TWO_BLOCK;
+    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+    //     await stake.connect(user2).stake(ethers.utils.parseEther("1"));
+    //     blocksToMove = PHASE_FOUR_BLOCK - PHASE_THREE_BLOCK;
+    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+    //     const [,balanceUser1] = await stake.callStatic.getUpdatedBalanceOf(user1.address); ;
+    //     const etherNumber = ethers.utils.formatEther(balanceUser1);
+    //     expect(etherNumber).to.eq('0.0');
+    //   });
+    // });
+
+    describe('withdrawStake', () => {
+
+      it('should throw error if withdrawStake amount is NOT greater than 0', async () => {
+        await stake.connect(user1).stake(transfer1m)
+
+        const _withdrawStake = stake.connect(user1).withdrawStake(0)
+        const errorMessage = 'Withdraw Stake: Amount must be greater than 0'
+
+        await expect(_withdrawStake).to.be.revertedWith(errorMessage)
+      })
+
+      it('should throw error if staked amount is LOWER than withdraw amount', async () => {
+        const oneThousand = ethers.utils.parseEther("1000")
+        const twoThousand = ethers.utils.parseEther("2000")
+        
+        await stake.connect(user1).stake(oneThousand)
+
+        const _withdrawStake = stake.connect(user1).withdrawStake(twoThousand)
+        const errorMessage = 'Withdraw amount is greater than staked amount'
+
+        await expect(_withdrawStake).to.be.revertedWith(errorMessage)
+      })
+
+      it("should reduce all balances correctly", async () => {
+        const stakeAmount = ethers.utils.parseUnits("1000", "ether")
+        const withdrawAmount = ethers.utils.parseUnits("495", "ether")
+
+        const stakeContract = stake.connect(user1)
+
+        await stakeContract.stake(stakeAmount)
+        await stakeContract.withdrawStake(withdrawAmount)
+
+        const [user1StakedAmount] = await stakeContract.getBalanceOf(user1.address)
+
+        const totalStaked = await stakeContract._totalStaked()
+        const user1TotalStaked = stakeAmount.sub(withdrawAmount)
+
+
+        expect(user1StakedAmount).to.eq(user1TotalStaked)
+        expect(totalStaked).to.eq(user1TotalStaked)
+      })
+    })
+    
+    describe.only('withdrawRewards', () => {
+      it('should throw an error if reward is 0', async () => {
+        const stakeContract = stake.connect(user1)
+        
+        await stakeContract.stake(transfer1k)
+
+        const _withdrawRewards = stakeContract.withdrawRewards()
+        const errorMessage = 'No reward to be withdrawn'
+
+        await expect(_withdrawRewards).to.be.revertedWith(errorMessage)
+      })
+
+      it('should reduce all balances correctly', async () => {
+        const stakeContract = stake.connect(user1)
+        
+        await stakeContract.stake(transfer1k)
+
+        const currentBlock = await getCurrentBlock()
+        const moveToPointZero = 122 - currentBlock; // point zero
+
+        await network.provider.send('hardhat_mine', ["0x" + moveToPointZero.toString(16)]);
+        await network.provider.send('hardhat_mine', ["0x" + PHASE_ONE_BLOCK.toString(16)]);
+        
+        const user1RewardBalance = await stake.callStatic.getReward(user1.address)
+        const [, balanceBeforeWithdraw] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
+        
+        expect(user1RewardBalance).to.eq(balanceBeforeWithdraw)
+
+        await stakeContract.withdrawRewards()
+
+        const [, balanceAfterWithdraw] = await stake.callStatic.getUpdatedBalanceOf(user1.address);
+
+        expect(balanceAfterWithdraw).to.eq("0")
+      })
+
+      it("should not calculate rewards for account without balance", async function () {
         let blocksToMove = 122 - (await getCurrentBlock());
         await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
         await stake.connect(user1).stake(transfer1m);
@@ -419,7 +519,9 @@ describe("Staking", () => {
         blocksToMove = PHASE_TWO_BLOCK - PHASE_ONE_BLOCK;
         await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
         await stake.connect(user2).stake(ethers.utils.parseEther("1"));
-        await stake.connect(user1).withdraw();
+        const [user1StakedAmount] = await stake.callStatic.getBalanceOf(user1.address);
+        await stake.connect(user1).withdrawStake(user1StakedAmount);
+        await stake.connect(user1).withdrawRewards();
         await stake.connect(user2).stake(transfer500k);
         blocksToMove = PHASE_THREE_BLOCK - PHASE_TWO_BLOCK;
         await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
@@ -430,7 +532,7 @@ describe("Staking", () => {
         const etherNumber = ethers.utils.formatEther(balanceUser1);
         expect(etherNumber).to.eq('0.0');
       });
-    });
+    })
 
   });
 });

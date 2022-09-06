@@ -12,7 +12,9 @@ contract StakingRewards is Ownable, ReentrancyGuard {
 
     event Stake(address indexed user, uint256 amount);
 
-    event Withdraw(address indexed user, uint256 stakedAmount, uint256 rewardAmount);
+    // event Withdraw(address indexed user, uint256 stakedAmount, uint256 rewardAmount);
+    event WithdrawStake(address indexed user, uint256 stakedAmount);
+    event WithdrawRewards(address indexed user, uint256 rewardAmount);
 
     event RewardsCalculated(uint256 totalRewardsAllocated, uint256 totalUserBalances, uint256 totalStakedPlusRewards);
 
@@ -161,6 +163,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         uint256 totalStakedPlusRewards = _totalStaked.add(_totalRewardsAllocated);
         uint256 totalNewRewards = 0;
         uint256 totalUserBalances = 0;
+
         for (uint256 i = 0; i < this.getAddressesSize(); i++){
             totalUserBalances = totalUserBalances.add(_stakedBalances[_addresses[i]].add(_rewardBalances[_addresses[i]]));
             uint256 newUserRewards = _calculateNewRewardAmount(_addresses[i]);
@@ -187,26 +190,60 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external nonReentrant isValidAccount(msg.sender) {
-        _updateReward();
-        uint256 stakedAmount = _stakedBalances[msg.sender];
-        uint256 rewardAmount = _rewardBalances[msg.sender];
-        uint256 totalAmount = stakedAmount.add(rewardAmount);
-        require(totalAmount > 0, "Current balance is 0");
+    // function withdrawAll() external nonReentrant isValidAccount(msg.sender) {
+    //     _updateReward();
+    //     uint256 stakedAmount = _stakedBalances[msg.sender];
+    //     uint256 rewardAmount = _rewardBalances[msg.sender];
+    //     uint256 totalAmount = stakedAmount.add(rewardAmount);
+    //     require(totalAmount > 0, "Current balance is 0");
 
-        if (totalAmount > _totalRewardsSupply) {
-            totalAmount = _totalRewardsSupply;
+    //     if (totalAmount > _totalRewardsSupply) {
+    //         totalAmount = _totalRewardsSupply;
+    //     }
+
+    //     _totalStaked = _totalStaked.sub(stakedAmount);
+    //     _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
+    //     _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
+    //     _stakedBalances[msg.sender] = 0;
+    //     _rewardBalances[msg.sender] = 0;
+
+    //     stakingToken.safeTransfer(msg.sender, stakedAmount);
+    //     stakingToken.safeTransfer(msg.sender, rewardAmount);
+    //     emit Withdraw(msg.sender, stakedAmount, rewardAmount);
+    // }
+
+    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
+        require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
+
+        uint256 stakedAmount = _stakedBalances[msg.sender];
+
+        require(stakedAmount >= _amount, "Withdraw amount is greater than staked amount");
+        
+        _stakedBalances[msg.sender] = _stakedBalances[msg.sender].sub(_amount);
+
+        _totalStaked = _totalStaked.sub(_amount);
+
+        stakingToken.safeTransfer(msg.sender, _amount);
+
+        emit WithdrawStake(msg.sender, stakedAmount);
+    }
+
+    function withdrawRewards() external isValidAccount(msg.sender) {
+        _updateReward();
+        uint256 rewardAmount = _rewardBalances[msg.sender];
+
+        require(rewardAmount > 0, "No reward to be withdrawn");
+
+        if (rewardAmount > _totalRewardsSupply) {
+            rewardAmount = _totalRewardsSupply;
         }
 
-        _totalStaked = _totalStaked.sub(stakedAmount);
+        _rewardBalances[msg.sender] = _rewardBalances[msg.sender].sub(rewardAmount);
         _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
         _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
-        _stakedBalances[msg.sender] = 0;
-        _rewardBalances[msg.sender] = 0;
-
-        stakingToken.safeTransfer(msg.sender, stakedAmount);
+        
         stakingToken.safeTransfer(msg.sender, rewardAmount);
-        emit Withdraw(msg.sender, stakedAmount, rewardAmount);
+        emit WithdrawRewards(msg.sender, rewardAmount);
     }
 
     function addAddress(address account) internal {
