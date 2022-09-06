@@ -16,7 +16,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
 
     event Stake(address indexed user, uint256 amount);
 
-    event Withdraw(address indexed user, uint256 lpAmount, uint256 rewardsAmount);
+    event Withdraw(address indexed user, uint256 amount);
 
     event RewardsCalculated(uint256 amount);
 
@@ -154,24 +154,37 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external nonReentrant isValidAccount(msg.sender) {
-        _updateReward();
-        uint256 lpAmount = _lpBalances[msg.sender];
-        uint256 rewardsAmount = _OGUNrewards[msg.sender];
-        require(lpAmount > 0, "Current balance is 0");
+    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
+        require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
-        if (rewardsAmount > _totalRewardsSupply) {
-            rewardsAmount = _totalRewardsSupply;
+        uint256 stakedAmount = _lpBalances[msg.sender];
+
+        require(stakedAmount >= _amount, "Withdraw amount is greater than staked amount");
+        
+        _lpBalances[msg.sender] = _lpBalances[msg.sender].sub(_amount);
+
+        totalLpStaked = totalLpStaked.sub(_amount);
+
+        lpToken.safeTransfer(msg.sender, _amount);
+
+        emit Withdraw(msg.sender, stakedAmount);
+    }
+
+    function withdrawRewards() external isValidAccount(msg.sender) {
+        _updateReward();
+        uint256 rewardAmount = _OGUNrewards[msg.sender];
+
+        require(rewardAmount > 0, "No reward to be withdrawn");
+
+        if (rewardAmount > _totalRewardsSupply) {
+            rewardAmount = _totalRewardsSupply;
         }
 
-        _lpBalances[msg.sender] = 0;
         _OGUNrewards[msg.sender] = 0;
-        totalLpStaked = totalLpStaked.sub(lpAmount);
-        _totalRewardsSupply = _totalRewardsSupply.sub(rewardsAmount);
-        lpToken.safeTransfer(msg.sender, lpAmount);
-        OGUNToken.safeTransfer(msg.sender, rewardsAmount);
-
-        emit Withdraw(msg.sender, lpAmount, rewardsAmount);
+        _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
+        
+        OGUNToken.safeTransfer(msg.sender, rewardAmount);
+        emit Withdraw(msg.sender, rewardAmount);
     }
 
     function addAddress(address account) internal {

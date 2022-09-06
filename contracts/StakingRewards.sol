@@ -12,16 +12,12 @@ contract StakingRewards is Ownable, ReentrancyGuard {
 
     event Stake(address indexed user, uint256 amount);
 
-    // event Withdraw(address indexed user, uint256 stakedAmount, uint256 rewardAmount);
-    event WithdrawStake(address indexed user, uint256 stakedAmount);
-    event WithdrawRewards(address indexed user, uint256 rewardAmount);
+    event Withdraw(address indexed user, uint256 amount);
 
     event RewardsCalculated(uint256 totalRewardsAllocated, uint256 totalUserBalances, uint256 totalStakedPlusRewards);
 
     event RewardsCalculatedOf(uint256 stakedAmount, uint256 inclusiveRewardAmount, uint256 newRewardAmount, address account);
 
-    // event PhaseInfo(uint256 currentBlock, uint256 relativeBlock, string currentPhase);
-    // emit PhaseInfo(block.number, _blockNumber, "");
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
     uint256 public constant PHASE_ONE_BLOCK = 1250000; 
@@ -58,7 +54,6 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         _;
     }
 
-    // withdraw ogun out of the contract with this method as the contract owner
     function reclaimOgun(address destination) external onlyOwner {
         uint256 balance = IERC20(stakingToken).balanceOf(address(this));
         IERC20(stakingToken).transfer(destination, balance);
@@ -190,28 +185,6 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         emit Stake(msg.sender, _amount);
     }
 
-    // function withdrawAll() external nonReentrant isValidAccount(msg.sender) {
-    //     _updateReward();
-    //     uint256 stakedAmount = _stakedBalances[msg.sender];
-    //     uint256 rewardAmount = _rewardBalances[msg.sender];
-    //     uint256 totalAmount = stakedAmount.add(rewardAmount);
-    //     require(totalAmount > 0, "Current balance is 0");
-
-    //     if (totalAmount > _totalRewardsSupply) {
-    //         totalAmount = _totalRewardsSupply;
-    //     }
-
-    //     _totalStaked = _totalStaked.sub(stakedAmount);
-    //     _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
-    //     _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
-    //     _stakedBalances[msg.sender] = 0;
-    //     _rewardBalances[msg.sender] = 0;
-
-    //     stakingToken.safeTransfer(msg.sender, stakedAmount);
-    //     stakingToken.safeTransfer(msg.sender, rewardAmount);
-    //     emit Withdraw(msg.sender, stakedAmount, rewardAmount);
-    // }
-
     function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
         require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
@@ -225,7 +198,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
 
         stakingToken.safeTransfer(msg.sender, _amount);
 
-        emit WithdrawStake(msg.sender, stakedAmount);
+        emit Withdraw(msg.sender, stakedAmount);
     }
 
     function withdrawRewards() external isValidAccount(msg.sender) {
@@ -238,12 +211,12 @@ contract StakingRewards is Ownable, ReentrancyGuard {
             rewardAmount = _totalRewardsSupply;
         }
 
-        _rewardBalances[msg.sender] = _rewardBalances[msg.sender].sub(rewardAmount);
+        _rewardBalances[msg.sender] = 0;
         _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
         _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
         
         stakingToken.safeTransfer(msg.sender, rewardAmount);
-        emit WithdrawRewards(msg.sender, rewardAmount);
+        emit Withdraw(msg.sender, rewardAmount);
     }
 
     function addAddress(address account) internal {

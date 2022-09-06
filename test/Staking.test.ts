@@ -17,23 +17,6 @@ async function getCurrentBlock() {
   return parseInt(await network.provider.send('eth_blockNumber'), 16);
 }
 
-async function logCurrentBlock(msg = '') {
-  const currentBlock = await getCurrentBlock()
-  console.log('current block:', currentBlock, msg);
-  return currentBlock;
-}
-
-async function getEvent(tx: ContractTransaction, eventName: String) {
-  const receipt: ContractReceipt = await tx.wait();
-  const event = receipt.events?.filter((x) => {return x.event == eventName});
-  return event[0].args;
-}
-
-async function logRewardsCalculated(tx: ContractTransaction) {
-  const eventArgs = await getEvent(tx, "RewardsCalculated")
-  console.log('RewardsCalculated', eventArgs.map(ethers.utils.formatEther))
-}
-
 describe("Staking", () => {
   let owner: SignerWithAddress,
     user1: SignerWithAddress,
@@ -45,11 +28,8 @@ describe("Staking", () => {
 
     async function nextPhase(blocksToNext) {
       await stake.updateReward()
-      // await logRewardsCalculated(await stake.updateReward())
-      // await logCurrentBlock('after update reward');
     
       await network.provider.send('hardhat_mine', ["0x" + blocksToNext.toString(16)]); // +3
-      // await logCurrentBlock('end of phase');
     }
 
     const transfer1k = ethers.utils.parseEther("1000");
@@ -84,18 +64,13 @@ describe("Staking", () => {
   describe("Stake contract", function () {
     describe("Staking rewards", () => {
       it("should be given proportionally to each user", async function () {
-        // await logCurrentBlock('starting point');
         await stake.connect(user1).stake(ethers.utils.parseEther("83000")); // +1 block
-        // await logCurrentBlock('user 1 staked');
         await stake.connect(user2).stake(ethers.utils.parseEther("1000000")); // +1 block
-        // await logCurrentBlock('user 2 staked');
         await stake.connect(user3).stake(ethers.utils.parseEther("2000")); // +1 block
-        // await logCurrentBlock('user 3 staked');
 
         const blocksToActivation = 122 - (await getCurrentBlock());
 
         await network.provider.send('hardhat_mine', ["0x" + blocksToActivation.toString(16)]);
-        // await logCurrentBlock('activation point');
 
         await nextPhase(1250000)
         const user1Phase1Rewards = ethers.utils.formatEther(await stake.callStatic.getReward(user1.address));
@@ -113,12 +88,10 @@ describe("Staking", () => {
         const user1Phase4Rewards = ethers.utils.formatEther(await stake.callStatic.getReward(user1.address));
         expect(user1Phase4Rewards).to.equal('15299539.1704')
 
-        // await logRewardsCalculated(await stake.updateReward())
         await stake.updateReward()
         const user1Rewards = (await stake.callStatic.getBalanceOf(user1.address)).map(ethers.utils.formatEther);
         const user2Rewards = (await stake.callStatic.getBalanceOf(user2.address)).map(ethers.utils.formatEther);
         const user3Rewards = (await stake.callStatic.getBalanceOf(user3.address)).map(ethers.utils.formatEther);
-        // await logCurrentBlock('done');
 
         expect(user1Rewards[1]).to.equal('15299539.1704');
         expect(user2Rewards[1]).to.equal('184331797.235');
@@ -132,9 +105,17 @@ describe("Staking", () => {
         expect(user2BalanceBefore).to.equal('4000000.0')
         expect(user3BalanceBefore).to.equal('998000.0')
 
-        // await stake.connect(user1).withdrawAll();
-        // await stake.connect(user2).withdrawAll();
-        // await stake.connect(user3).withdrawAll();
+        const [user1StakedAmount] = await stake.connect(user1).getBalanceOf(user1.address)
+        await stake.connect(user1).withdrawStake(user1StakedAmount);
+        await stake.connect(user1).withdrawRewards();
+
+        const [user2StakedAmount] = await stake.connect(user2).getBalanceOf(user2.address)
+        await stake.connect(user2).withdrawStake(user2StakedAmount);
+        await stake.connect(user2).withdrawRewards();
+
+        const [user3StakedAmount] = await stake.connect(user3).getBalanceOf(user3.address)
+        await stake.connect(user3).withdrawStake(user3StakedAmount);
+        await stake.connect(user3).withdrawRewards();
 
         const user1BalanceAfter = ethers.utils.formatEther(await token.connect(user1).balanceOf(user1.address))
         const user2BalanceAfter = ethers.utils.formatEther(await token.connect(user2).balanceOf(user2.address))
@@ -150,22 +131,6 @@ describe("Staking", () => {
         const etherNumber = ethers.utils.formatEther(reward);
         expect(etherNumber).to.eq("0.0");
       });
-
-      // it("should allow users to stake and withdrawAll multiple times", async function () {
-      //   const blocksToMove = 122 - (await getCurrentBlock());
-      //   await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-      //   await stake.connect(user1).stake(transfer10k);
-      //   await network.provider.send('hardhat_mine', ["0x9"]);
-      //   await stake.connect(user1).withdrawAll();
-      //   await network.provider.send('hardhat_mine', ["0x9"]);
-      //   await stake.connect(user1).stake(transfer10k);
-      //   await network.provider.send('hardhat_mine', ["0x9"]);
-      //   await stake.connect(user1).withdrawAll();
-      //   await network.provider.send('hardhat_mine', ["0x9"]);
-      //   await stake.connect(user1).stake(transfer10k);
-      //   await network.provider.send('hardhat_mine', ["0x9"]);
-      //   await stake.connect(user1).withdrawAll();
-      // });
     });
 
     describe("Stake calculation for different phases with just 1 user", () => {
@@ -398,39 +363,6 @@ describe("Staking", () => {
       });
     });
 
-    // describe("Withdraw all", () => {
-    //   it("should transfer current balance to user", async function () {
-    //     const blocksToMove = 122 - (await getCurrentBlock());
-    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-    //     await stake.connect(user1).stake(transfer1m);
-    //     await stake.connect(user1).withdrawAll();
-    //     const user1Balance = await token.balanceOf(user1.address);
-    //     expect(ethers.utils.formatEther(user1Balance)).to.eq('1000032.0');
-    //   });
-
-    //   it("after withdraw all, should not calculate rewards for account without balance", async function () {
-    //     let blocksToMove = 122 - (await getCurrentBlock());
-    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-    //     await stake.connect(user1).stake(transfer1m);
-    //     blocksToMove = PHASE_ONE_BLOCK;
-    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-    //     await stake.connect(user2).stake(ethers.utils.parseEther("1")); // Forces to change _lastUpdatedBlockNumber state
-    //     blocksToMove = PHASE_TWO_BLOCK - PHASE_ONE_BLOCK;
-    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-    //     await stake.connect(user2).stake(ethers.utils.parseEther("1"));
-    //     await stake.connect(user1).withdrawAll();
-    //     await stake.connect(user2).stake(transfer500k);
-    //     blocksToMove = PHASE_THREE_BLOCK - PHASE_TWO_BLOCK;
-    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-    //     await stake.connect(user2).stake(ethers.utils.parseEther("1"));
-    //     blocksToMove = PHASE_FOUR_BLOCK - PHASE_THREE_BLOCK;
-    //     await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
-    //     const [,balanceUser1] = await stake.callStatic.getUpdatedBalanceOf(user1.address); ;
-    //     const etherNumber = ethers.utils.formatEther(balanceUser1);
-    //     expect(etherNumber).to.eq('0.0');
-    //   });
-    // });
-
     describe('withdrawStake', () => {
 
       it('should throw error if withdrawStake amount is NOT greater than 0', async () => {
@@ -474,7 +406,7 @@ describe("Staking", () => {
       })
     })
     
-    describe.only('withdrawRewards', () => {
+    describe('withdrawRewards', () => {
       it('should throw an error if reward is 0', async () => {
         const stakeContract = stake.connect(user1)
         
