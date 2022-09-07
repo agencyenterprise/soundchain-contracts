@@ -363,7 +363,18 @@ describe("Staking", () => {
       });
     });
 
-    describe('withdrawStake', () => {
+    describe.only('withdrawStake', () => {
+
+      it("should transfer current balance to user", async function () {
+        const blocksToMove = 122 - (await getCurrentBlock());
+        await network.provider.send('hardhat_mine', ["0x" + blocksToMove.toString(16)]);
+        await stake.connect(user1).stake(transfer1m);
+        const [user1StakedAmount] = await stake.connect(user1).getBalanceOf(user1.address);
+        await stake.connect(user1).withdrawStake(user1StakedAmount); // + 1 block
+        await stake.connect(user1).withdrawRewards();
+        const user1Balance = await token.balanceOf(user1.address);
+        expect(ethers.utils.formatEther(user1Balance)).to.eq('1000032.0');
+      });
 
       it('should throw error if withdrawStake amount is NOT greater than 0', async () => {
         await stake.connect(user1).stake(transfer1m)

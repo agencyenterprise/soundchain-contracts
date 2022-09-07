@@ -173,6 +173,17 @@ describe("LP Staking", () => {
 
     describe('withdrawStake', () => {
 
+      it("should transfer current balance to user 1 of 4899820", async function () {
+        await stake.connect(user1).stake(transfer1m);// + 1 block
+        await network.provider.send('hardhat_mine', ['0x2f9ae']); // + 194,989 blocks
+        const [user1StakedAmount] = await stake.connect(user1).getBalanceOf(user1.address);
+        await stake.connect(user1).withdrawRewards();
+        await stake.connect(user1).withdrawStake(user1StakedAmount); // + 1 block
+        const user1Balance = await token.balanceOf(user1.address);
+
+        expect(ethers.utils.formatEther(user1Balance)).to.eq('1974955.0');
+      });
+
       it('should throw error if withdrawStake amount is NOT greater than 0', async () => {
         await stake.connect(user1).stake(transfer1m)
 
@@ -212,6 +223,7 @@ describe("LP Staking", () => {
         expect(user1StakedAmount).to.eq(user1TotalStaked)
         expect(totalStaked).to.eq(user1TotalStaked)
       })
+
     })
     
     describe('withdrawRewards', () => {

@@ -16,7 +16,8 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
 
     event Stake(address indexed user, uint256 amount);
 
-    event Withdraw(address indexed user, uint256 amount);
+    event WithdrawStake(address indexed user, uint256 lpAmount);
+    event WithdrawRewards(address indexed user, uint256 rewardsAmount);
 
     event RewardsCalculated(uint256 amount);
 
@@ -167,7 +168,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
 
         lpToken.safeTransfer(msg.sender, _amount);
 
-        emit Withdraw(msg.sender, stakedAmount);
+        emit WithdrawStake(msg.sender, stakedAmount);
     }
 
     function withdrawRewards() external isValidAccount(msg.sender) {
@@ -184,7 +185,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
         
         OGUNToken.safeTransfer(msg.sender, rewardAmount);
-        emit Withdraw(msg.sender, rewardAmount);
+        emit WithdrawRewards(msg.sender, rewardAmount);
     }
 
     function addAddress(address account) internal {
