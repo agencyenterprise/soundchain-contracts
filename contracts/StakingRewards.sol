@@ -20,13 +20,13 @@ contract StakingRewards is Ownable, ReentrancyGuard {
 
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant PHASE_ONE_BLOCK = 1250000; 
-    uint256 public constant PHASE_TWO_BLOCK = 3125000 + PHASE_ONE_BLOCK; 
-    uint256 public constant PHASE_THREE_BLOCK = 10000000 + PHASE_TWO_BLOCK; 
+    uint256 public constant PHASE_ONE_BLOCK = 1250000;
+    uint256 public constant PHASE_TWO_BLOCK = 3125000 + PHASE_ONE_BLOCK;
+    uint256 public constant PHASE_THREE_BLOCK = 10000000 + PHASE_TWO_BLOCK;
     uint256 public constant PHASE_FOUR_BLOCK = 15000000 + PHASE_THREE_BLOCK;
     uint256 public constant REWARDS_PHASE_ONE = 32 * (10**18);
-    uint256 public constant REWARDS_PHASE_TWO = 16 * (10**18); 
-    uint256 public constant REWARDS_PHASE_THREE = 5 * (10**18); 
+    uint256 public constant REWARDS_PHASE_TWO = 16 * (10**18);
+    uint256 public constant REWARDS_PHASE_THREE = 5 * (10**18);
     uint256 public constant REWARDS_PHASE_FOUR = 4 * (10**18);
 
     IERC20 public immutable stakingToken;
@@ -69,7 +69,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
     function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256, uint256, uint256) {
         uint256 newUserReward = _calculateNewRewardAmount(_account);
         return (_stakedBalances[_account], _rewardBalances[_account], newUserReward);
-    } 
+    }
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
         uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked.add(_totalRewardsAllocated));
@@ -186,12 +186,13 @@ contract StakingRewards is Ownable, ReentrancyGuard {
     }
 
     function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
+        _updateReward();
         require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
         uint256 stakedAmount = _stakedBalances[msg.sender];
 
         require(stakedAmount >= _amount, "Withdraw amount is greater than staked amount");
-        
+
         _stakedBalances[msg.sender] = _stakedBalances[msg.sender].sub(_amount);
 
         _totalStaked = _totalStaked.sub(_amount);
@@ -214,7 +215,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         _rewardBalances[msg.sender] = 0;
         _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
         _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
-        
+
         stakingToken.safeTransfer(msg.sender, rewardAmount);
         emit Withdraw(msg.sender, rewardAmount);
     }
