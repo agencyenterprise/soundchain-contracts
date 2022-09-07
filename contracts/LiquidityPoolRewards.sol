@@ -60,8 +60,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         IERC20(OGUNToken).transfer(destination, balance);
     }
 
-    function getUpdatedBalanceOf(address _account) external isValidAccount(_account) returns (uint256, uint256) {
-        _updateReward();
+    function getUpdatedBalanceOf(address _account) external isValidAccount(_account) updateReward returns (uint256, uint256) {
         emit RewardsCalculatedOf(_lpBalances[_account], _OGUNrewards[_account], _account);
         return (_lpBalances[_account], _OGUNrewards[_account]);
     }
