@@ -26,7 +26,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
     uint256 public constant REWARDS_RATE = 5000000000000000000; // 5.0
     uint256 public constant TOTAL_BLOCKS = 20000000; // 20 million
-    
+
     IERC20 public immutable OGUNToken;
     IERC20 public immutable lpToken;
 
@@ -45,7 +45,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         lpToken = IERC20(_lpToken);
         _totalRewardsSupply = _rewardsSupply;
         firstBlockNumber = block.number;
-    } 
+    }
 
     // withdraw ogun out of the contract with this method as the contract owner
     function reclaimOgun(address destination) external onlyOwner {
@@ -88,7 +88,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
         uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(totalLpStaked);
-        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);  
+        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
     }
 
     function _getReward(address _user) private view returns (uint256 reward) {
@@ -131,7 +131,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
             _lastUpdatedBlockNumber = block.number;
             return;
         }
-        
+
         for (uint256 i = 0; i < this.getAddressesSize(); i++){
             _calculateReward(_addresses[i]);
         }
@@ -156,12 +156,13 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
     }
 
     function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
+        _updateReward();
         require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
         uint256 stakedAmount = _lpBalances[msg.sender];
 
         require(stakedAmount >= _amount, "Withdraw amount is greater than staked amount");
-        
+
         _lpBalances[msg.sender] = _lpBalances[msg.sender].sub(_amount);
 
         totalLpStaked = totalLpStaked.sub(_amount);
@@ -183,7 +184,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
 
         _OGUNrewards[msg.sender] = 0;
         _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
-        
+
         OGUNToken.safeTransfer(msg.sender, rewardAmount);
         emit WithdrawRewards(msg.sender, rewardAmount);
     }
