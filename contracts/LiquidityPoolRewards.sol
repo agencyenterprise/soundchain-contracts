@@ -7,9 +7,6 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "hardhat/console.sol";
-
-
 contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
@@ -47,15 +44,20 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         firstBlockNumber = block.number;
     }
 
+    modifier isValidAccount(address _account) {
+        require(_addressInserted[_account], "address hasn't stake any tokens yet");
+        _;
+    }
+
+    modifier updateReward() {
+        _updateReward();
+        _;
+    }
+
     // withdraw ogun out of the contract with this method as the contract owner
     function reclaimOgun(address destination) external onlyOwner {
         uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
         IERC20(OGUNToken).transfer(destination, balance);
-    }
-
-    modifier isValidAccount(address _account) {
-        require(_addressInserted[_account], "address hasn't stake any tokens yet");
-        _;
     }
 
     function getUpdatedBalanceOf(address _account) external isValidAccount(_account) returns (uint256, uint256) {
@@ -139,15 +141,10 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         emit RewardsCalculated(totalLpStaked);
     }
 
-    function updateReward() external {
-        _updateReward();
-    }
-
-    function stake(uint256 _amount) external nonReentrant {
+    function stake(uint256 _amount) external nonReentrant updateReward {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         require(block.number.sub(firstBlockNumber) < TOTAL_BLOCKS, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
-        _updateReward();
         totalLpStaked = totalLpStaked.add(_amount);
         _lpBalances[msg.sender] = _lpBalances[msg.sender].add(_amount);
         addAddress(msg.sender);
@@ -155,8 +152,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
-        _updateReward();
+    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) updateReward   {
         require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
         uint256 stakedAmount = _lpBalances[msg.sender];
@@ -172,8 +168,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         emit WithdrawStake(msg.sender, stakedAmount);
     }
 
-    function withdrawRewards() external isValidAccount(msg.sender) {
-        _updateReward();
+    function withdrawRewards() external isValidAccount(msg.sender) updateReward {
         uint256 rewardAmount = _OGUNrewards[msg.sender];
 
         require(rewardAmount > 0, "No reward to be withdrawn");

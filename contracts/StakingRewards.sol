@@ -54,14 +54,18 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         _;
     }
 
+    modifier updateRewardMod() {
+        _updateReward();
+        _;
+    }
+
     function reclaimOgun(address destination) external onlyOwner {
         uint256 balance = IERC20(stakingToken).balanceOf(address(this));
         IERC20(stakingToken).transfer(destination, balance);
     }
 
-    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) returns (uint256, uint256, uint256) {
+    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) updateRewardMod returns (uint256, uint256, uint256) {
         uint256 newUserReward = _calculateNewRewardAmount(_account);
-        _updateReward();
         emit RewardsCalculatedOf(_stakedBalances[_account], _rewardBalances[_account], newUserReward, _account);
         return (_stakedBalances[_account], _rewardBalances[_account], newUserReward);
     }
@@ -171,22 +175,20 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         emit RewardsCalculated(_totalRewardsAllocated, totalUserBalances, totalStakedPlusRewards);
     }
 
-    function updateReward() external {
-        _updateReward();
-    }
-
-    function stake(uint256 _amount) external nonReentrant {
+    function stake(uint256 _amount) external nonReentrant updateRewardMod {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
-        _updateReward();
         _totalStaked = _totalStaked.add(_amount); // initial stake
         _stakedBalances[msg.sender] = _stakedBalances[msg.sender].add(_amount);
         addAddress(msg.sender);
         emit Stake(msg.sender, _amount);
     }
 
-    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) {
+    function updateReward() external {
         _updateReward();
+    }
+
+    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) updateRewardMod {
         require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
         uint256 stakedAmount = _stakedBalances[msg.sender];
@@ -202,8 +204,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         emit Withdraw(msg.sender, stakedAmount);
     }
 
-    function withdrawRewards() external isValidAccount(msg.sender) {
-        _updateReward();
+    function withdrawRewards() external isValidAccount(msg.sender) updateRewardMod {
         uint256 rewardAmount = _rewardBalances[msg.sender];
 
         require(rewardAmount > 0, "No reward to be withdrawn");

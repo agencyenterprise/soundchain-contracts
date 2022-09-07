@@ -179,7 +179,7 @@ describe("LP Staking", () => {
       });
     });
 
-    describe.only("withdrawStake", () => {
+    describe("withdrawStake", () => {
       it("should transfer current balance to user 1 of 4899820", async function () {
         await stake.connect(user1).stake(transfer1m); // + 1 block
         await network.provider.send("hardhat_mine", ["0x2f9ae"]); // + 194,989 blocks
