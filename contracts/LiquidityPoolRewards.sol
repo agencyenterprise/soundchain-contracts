@@ -7,16 +7,14 @@ import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import { ReentrancyGuard } from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import "hardhat/console.sol";
-
-
 contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
     using SafeERC20 for IERC20;
     using SafeMath for uint256;
 
     event Stake(address indexed user, uint256 amount);
 
-    event Withdraw(address indexed user, uint256 lpAmount, uint256 rewardsAmount);
+    event WithdrawStake(address indexed user, uint256 lpAmount);
+    event WithdrawRewards(address indexed user, uint256 rewardsAmount);
 
     event RewardsCalculated(uint256 amount);
 
@@ -25,7 +23,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
     uint256 public constant REWARDS_RATE = 5000000000000000000; // 5.0
     uint256 public constant TOTAL_BLOCKS = 20000000; // 20 million
-    
+
     IERC20 public immutable OGUNToken;
     IERC20 public immutable lpToken;
 
@@ -44,12 +42,6 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         lpToken = IERC20(_lpToken);
         _totalRewardsSupply = _rewardsSupply;
         firstBlockNumber = block.number;
-    } 
-
-    // withdraw ogun out of the contract with this method as the contract owner
-    function reclaimOgun(address destination) external onlyOwner {
-        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
-        IERC20(OGUNToken).transfer(destination, balance);
     }
 
     modifier isValidAccount(address _account) {
@@ -57,8 +49,18 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         _;
     }
 
-    function getUpdatedBalanceOf(address _account) external isValidAccount(_account) returns (uint256, uint256) {
+    modifier updateReward() {
         _updateReward();
+        _;
+    }
+
+    // withdraw ogun out of the contract with this method as the contract owner
+    function reclaimOgun(address destination) external onlyOwner {
+        uint256 balance = IERC20(OGUNToken).balanceOf(address(this));
+        IERC20(OGUNToken).transfer(destination, balance);
+    }
+
+    function getUpdatedBalanceOf(address _account) external isValidAccount(_account) updateReward returns (uint256, uint256) {
         emit RewardsCalculatedOf(_lpBalances[_account], _OGUNrewards[_account], _account);
         return (_lpBalances[_account], _OGUNrewards[_account]);
     }
@@ -87,7 +89,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
         uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(totalLpStaked);
-        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);  
+        return (balanceScaled.mul(_rate).div(OGUN_PRECISION_FACTOR)).mul(_blocks);
     }
 
     function _getReward(address _user) private view returns (uint256 reward) {
@@ -130,7 +132,7 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
             _lastUpdatedBlockNumber = block.number;
             return;
         }
-        
+
         for (uint256 i = 0; i < this.getAddressesSize(); i++){
             _calculateReward(_addresses[i]);
         }
@@ -138,15 +140,10 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         emit RewardsCalculated(totalLpStaked);
     }
 
-    function updateReward() external {
-        _updateReward();
-    }
-
-    function stake(uint256 _amount) external nonReentrant {
+    function stake(uint256 _amount) external nonReentrant updateReward {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         require(block.number.sub(firstBlockNumber) < TOTAL_BLOCKS, "This liquidity pool stake has ended. You can withdraw in case of any active balance");
         lpToken.safeTransferFrom(msg.sender, address(this), _amount);
-        _updateReward();
         totalLpStaked = totalLpStaked.add(_amount);
         _lpBalances[msg.sender] = _lpBalances[msg.sender].add(_amount);
         addAddress(msg.sender);
@@ -154,24 +151,36 @@ contract LiquidityPoolRewards is Ownable, ReentrancyGuard {
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external nonReentrant isValidAccount(msg.sender) {
-        _updateReward();
-        uint256 lpAmount = _lpBalances[msg.sender];
-        uint256 rewardsAmount = _OGUNrewards[msg.sender];
-        require(lpAmount > 0, "Current balance is 0");
+    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) updateReward   {
+        require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
 
-        if (rewardsAmount > _totalRewardsSupply) {
-            rewardsAmount = _totalRewardsSupply;
+        uint256 stakedAmount = _lpBalances[msg.sender];
+
+        require(stakedAmount >= _amount, "Withdraw amount is greater than staked amount");
+
+        _lpBalances[msg.sender] = _lpBalances[msg.sender].sub(_amount);
+
+        totalLpStaked = totalLpStaked.sub(_amount);
+
+        lpToken.safeTransfer(msg.sender, _amount);
+
+        emit WithdrawStake(msg.sender, stakedAmount);
+    }
+
+    function withdrawRewards() external isValidAccount(msg.sender) updateReward {
+        uint256 rewardAmount = _OGUNrewards[msg.sender];
+
+        require(rewardAmount > 0, "No reward to be withdrawn");
+
+        if (rewardAmount > _totalRewardsSupply) {
+            rewardAmount = _totalRewardsSupply;
         }
 
-        _lpBalances[msg.sender] = 0;
         _OGUNrewards[msg.sender] = 0;
-        totalLpStaked = totalLpStaked.sub(lpAmount);
-        _totalRewardsSupply = _totalRewardsSupply.sub(rewardsAmount);
-        lpToken.safeTransfer(msg.sender, lpAmount);
-        OGUNToken.safeTransfer(msg.sender, rewardsAmount);
+        _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
 
-        emit Withdraw(msg.sender, lpAmount, rewardsAmount);
+        OGUNToken.safeTransfer(msg.sender, rewardAmount);
+        emit WithdrawRewards(msg.sender, rewardAmount);
     }
 
     function addAddress(address account) internal {

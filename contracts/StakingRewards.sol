@@ -12,23 +12,21 @@ contract StakingRewards is Ownable, ReentrancyGuard {
 
     event Stake(address indexed user, uint256 amount);
 
-    event Withdraw(address indexed user, uint256 stakedAmount, uint256 rewardAmount);
+    event Withdraw(address indexed user, uint256 amount);
 
     event RewardsCalculated(uint256 totalRewardsAllocated, uint256 totalUserBalances, uint256 totalStakedPlusRewards);
 
     event RewardsCalculatedOf(uint256 stakedAmount, uint256 inclusiveRewardAmount, uint256 newRewardAmount, address account);
 
-    // event PhaseInfo(uint256 currentBlock, uint256 relativeBlock, string currentPhase);
-    // emit PhaseInfo(block.number, _blockNumber, "");
 
     uint256 public constant OGUN_PRECISION_FACTOR = 10**12;
-    uint256 public constant PHASE_ONE_BLOCK = 1250000; 
-    uint256 public constant PHASE_TWO_BLOCK = 3125000 + PHASE_ONE_BLOCK; 
-    uint256 public constant PHASE_THREE_BLOCK = 10000000 + PHASE_TWO_BLOCK; 
+    uint256 public constant PHASE_ONE_BLOCK = 1250000;
+    uint256 public constant PHASE_TWO_BLOCK = 3125000 + PHASE_ONE_BLOCK;
+    uint256 public constant PHASE_THREE_BLOCK = 10000000 + PHASE_TWO_BLOCK;
     uint256 public constant PHASE_FOUR_BLOCK = 15000000 + PHASE_THREE_BLOCK;
     uint256 public constant REWARDS_PHASE_ONE = 32 * (10**18);
-    uint256 public constant REWARDS_PHASE_TWO = 16 * (10**18); 
-    uint256 public constant REWARDS_PHASE_THREE = 5 * (10**18); 
+    uint256 public constant REWARDS_PHASE_TWO = 16 * (10**18);
+    uint256 public constant REWARDS_PHASE_THREE = 5 * (10**18);
     uint256 public constant REWARDS_PHASE_FOUR = 4 * (10**18);
 
     IERC20 public immutable stakingToken;
@@ -56,15 +54,18 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         _;
     }
 
-    // withdraw ogun out of the contract with this method as the contract owner
+    modifier updateRewardMod() {
+        _updateReward();
+        _;
+    }
+
     function reclaimOgun(address destination) external onlyOwner {
         uint256 balance = IERC20(stakingToken).balanceOf(address(this));
         IERC20(stakingToken).transfer(destination, balance);
     }
 
-    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) returns (uint256, uint256, uint256) {
+    function getUpdatedBalanceOf(address _account) external nonReentrant isValidAccount(_account) updateRewardMod returns (uint256, uint256, uint256) {
         uint256 newUserReward = _calculateNewRewardAmount(_account);
-        _updateReward();
         emit RewardsCalculatedOf(_stakedBalances[_account], _rewardBalances[_account], newUserReward, _account);
         return (_stakedBalances[_account], _rewardBalances[_account], newUserReward);
     }
@@ -72,7 +73,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
     function getBalanceOf(address _account) external view isValidAccount(_account) returns (uint256, uint256, uint256) {
         uint256 newUserReward = _calculateNewRewardAmount(_account);
         return (_stakedBalances[_account], _rewardBalances[_account], newUserReward);
-    } 
+    }
 
     function _rewardPerBlock(uint256 _balance, uint256 _rate, uint256 _blocks) private view returns (uint256) {
         uint256 balanceScaled = (_balance.mul(OGUN_PRECISION_FACTOR)).div(_totalStaked.add(_totalRewardsAllocated));
@@ -161,6 +162,7 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         uint256 totalStakedPlusRewards = _totalStaked.add(_totalRewardsAllocated);
         uint256 totalNewRewards = 0;
         uint256 totalUserBalances = 0;
+
         for (uint256 i = 0; i < this.getAddressesSize(); i++){
             totalUserBalances = totalUserBalances.add(_stakedBalances[_addresses[i]].add(_rewardBalances[_addresses[i]]));
             uint256 newUserRewards = _calculateNewRewardAmount(_addresses[i]);
@@ -173,40 +175,50 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         emit RewardsCalculated(_totalRewardsAllocated, totalUserBalances, totalStakedPlusRewards);
     }
 
-    function updateReward() external {
-        _updateReward();
-    }
-
-    function stake(uint256 _amount) external nonReentrant {
+    function stake(uint256 _amount) external nonReentrant updateRewardMod {
         require(_amount > 0, "Stake: Amount must be greater than 0");
         stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
-        _updateReward();
         _totalStaked = _totalStaked.add(_amount); // initial stake
         _stakedBalances[msg.sender] = _stakedBalances[msg.sender].add(_amount);
         addAddress(msg.sender);
         emit Stake(msg.sender, _amount);
     }
 
-    function withdraw() external nonReentrant isValidAccount(msg.sender) {
+    function updateReward() external {
         _updateReward();
-        uint256 stakedAmount = _stakedBalances[msg.sender];
-        uint256 rewardAmount = _rewardBalances[msg.sender];
-        uint256 totalAmount = stakedAmount.add(rewardAmount);
-        require(totalAmount > 0, "Current balance is 0");
+    }
 
-        if (totalAmount > _totalRewardsSupply) {
-            totalAmount = _totalRewardsSupply;
+    function withdrawStake(uint256 _amount) external isValidAccount(msg.sender) updateRewardMod {
+        require(_amount > 0, "Withdraw Stake: Amount must be greater than 0");
+
+        uint256 stakedAmount = _stakedBalances[msg.sender];
+
+        require(stakedAmount >= _amount, "Withdraw amount is greater than staked amount");
+
+        _stakedBalances[msg.sender] = _stakedBalances[msg.sender].sub(_amount);
+
+        _totalStaked = _totalStaked.sub(_amount);
+
+        stakingToken.safeTransfer(msg.sender, _amount);
+
+        emit Withdraw(msg.sender, stakedAmount);
+    }
+
+    function withdrawRewards() external isValidAccount(msg.sender) updateRewardMod {
+        uint256 rewardAmount = _rewardBalances[msg.sender];
+
+        require(rewardAmount > 0, "No reward to be withdrawn");
+
+        if (rewardAmount > _totalRewardsSupply) {
+            rewardAmount = _totalRewardsSupply;
         }
 
-        _totalStaked = _totalStaked.sub(stakedAmount);
+        _rewardBalances[msg.sender] = 0;
         _totalRewardsSupply = _totalRewardsSupply.sub(rewardAmount);
         _totalRewardsAllocated = _totalRewardsAllocated.sub(rewardAmount);
-        _stakedBalances[msg.sender] = 0;
-        _rewardBalances[msg.sender] = 0;
 
-        stakingToken.safeTransfer(msg.sender, stakedAmount);
         stakingToken.safeTransfer(msg.sender, rewardAmount);
-        emit Withdraw(msg.sender, stakedAmount, rewardAmount);
+        emit Withdraw(msg.sender, rewardAmount);
     }
 
     function addAddress(address account) internal {
