@@ -28,9 +28,12 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 quantity,
         uint256 pricePerItem,
         uint256 OGUNPricePerItem,
+        uint256 BTCPricePerItem, // Added for Bitcoin
         bool acceptsMATIC,
         bool acceptsOGUN,
-        uint256 startingTime
+        bool acceptsBTC, // Added for Bitcoin
+        uint256 startingTime,
+        uint256 chainId
     );
     event ItemSold(
         address indexed seller,
@@ -39,7 +42,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 tokenId,
         uint256 quantity,
         uint256 pricePerItem,
-        bool isPaymentOGUN
+        bool isPaymentOGUN,
+        bool isPaymentBTC, // Added for Bitcoin
+        uint256 chainId
     );
     event ItemUpdated(
         address indexed owner,
@@ -47,17 +52,21 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 tokenId,
         uint256 newPrice,
         uint256 newOGUNPrice,
+        uint256 newBTCPrice, // Added for Bitcoin
         bool acceptsMATIC,
         bool acceptsOGUN,
-        uint256 startingTime
+        bool acceptsBTC, // Added for Bitcoin
+        uint256 startingTime,
+        uint256 chainId
     );
     event ItemCanceled(
         address indexed owner,
         address indexed nft,
-        uint256 tokenId
+        uint256 tokenId,
+        uint256 chainId
     );
-    event EditionListed(address indexed nft, uint256 editionId);
-    event EditionCanceled(address indexed nft, uint256 editionId);
+    event EditionListed(address indexed nft, uint256 editionId, uint256 chainId);
+    event EditionCanceled(address indexed nft, uint256 editionId, uint256 chainId);
     event UpdatePlatformFee(uint16 platformFee);
     event UpdatePlatformFeeRecipient(address payable platformFeeRecipient);
 
@@ -66,14 +75,18 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 quantity;
         uint256 pricePerItem;
         uint256 OGUNPricePerItem;
+        uint256 BTCPricePerItem; // Added for Bitcoin
         bool acceptsMATIC;
         bool acceptsOGUN;
+        bool acceptsBTC; // Added for Bitcoin
         uint256 startingTime;
+        uint256 chainId; // Added for multi-chain tracking
     }
 
     bytes4 private constant INTERFACE_ID_ERC721 = 0x80ac58cd;
 
     IERC20 public immutable OGUNToken;
+    mapping(uint256 => bool) public supportedChains; // Track supported chains
 
     /// @notice NftAddress -> Token ID -> Owner -> Listing item
     mapping(address => mapping(uint256 => mapping(address => Listing)))
@@ -135,6 +148,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             revert("invalid nft address");
         }
         require(_getNow() >= listedItem.startingTime, "item not buyable");
+        require(supportedChains[listedItem.chainId], "Unsupported chain");
         _;
     }
 
@@ -151,6 +165,12 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         feeRecipient = _feeRecipient;
         rewardsRate = _rewardsRate;
         rewardsLimit = _rewardsLimit;
+        // Initialize supported chains
+        supportedChains[1] = true;   // Ethereum
+        supportedChains[137] = true; // Polygon
+        supportedChains[43114] = true; // Avalanche (proxy for Solana)
+        supportedChains[8453] = true; // Base
+        supportedChains[205] = true;  // Tezos
     }
 
     /// @notice Method for canceling listed NFT
@@ -188,7 +208,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         }
         editionListings[_nftAddress][_editionNumber] = false;
 
-        emit EditionCanceled(_nftAddress, _editionNumber);
+        emit EditionCanceled(_nftAddress, _editionNumber, block.chainid);
     }
 
     /// @notice Method for batch canceling listed NFT
@@ -216,17 +236,23 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     /// @param _tokenId Token ID of NFT
     /// @param _newPrice New sale price for each iteam
     /// @param _newOGUNPrice New sale price in OGUN for each iteam
+    /// @param _newBTCPrice New sale price in BTC for each item
     /// @param _acceptsMATIC true in case accepts MATIC as payment
     /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _acceptsBTC true in case accepts BTC as payment
     /// @param _startingTime scheduling for a future sale
+    /// @param _chainId Chain ID for the listing
     function updateListing(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _newPrice,
         uint256 _newOGUNPrice,
+        uint256 _newBTCPrice,
         bool _acceptsMATIC,
         bool _acceptsOGUN,
-        uint256 _startingTime
+        bool _acceptsBTC,
+        uint256 _startingTime,
+        uint256 _chainId
     ) external nonReentrant isListed(_nftAddress, _tokenId, _msgSender()) {
         Listing storage listedItem = listings[_nftAddress][_tokenId][
             _msgSender()
@@ -239,24 +265,31 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         }
 
         require(
-            (_acceptsMATIC || _acceptsOGUN),
+            (_acceptsMATIC || _acceptsOGUN || _acceptsBTC),
             "item should have a way of payment"
         );
+        require(supportedChains[_chainId], "Unsupported chain");
 
         listedItem.pricePerItem = _newPrice;
         listedItem.acceptsMATIC = _acceptsMATIC;
         listedItem.OGUNPricePerItem = _newOGUNPrice;
         listedItem.acceptsOGUN = _acceptsOGUN;
+        listedItem.BTCPricePerItem = _newBTCPrice; // Added for Bitcoin
+        listedItem.acceptsBTC = _acceptsBTC; // Added for Bitcoin
         listedItem.startingTime = _startingTime;
+        listedItem.chainId = _chainId;
         emit ItemUpdated(
             _msgSender(),
             _nftAddress,
             _tokenId,
             _newPrice,
             _newOGUNPrice,
+            _newBTCPrice,
             _acceptsMATIC,
             _acceptsOGUN,
-            _startingTime
+            _acceptsBTC,
+            _startingTime,
+            _chainId
         );
     }
 
@@ -264,11 +297,13 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     /// @param _nftAddress NFT contract address
     /// @param _tokenId TokenId
     /// @param _isPaymentOGUN true if the payment in OGUN
+    /// @param _isPaymentBTC true if the payment in BTC
     function buyItem(
         address _nftAddress,
         uint256 _tokenId,
         address payable _owner,
-        bool _isPaymentOGUN
+        bool _isPaymentOGUN,
+        bool _isPaymentBTC
     )
         external
         payable
@@ -277,20 +312,25 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         validListing(_nftAddress, _tokenId, _owner)
     {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
+        require(!(_isPaymentOGUN && _isPaymentBTC), "Choose one payment type");
         if (_isPaymentOGUN) {
             uint256 allowance = OGUNToken.allowance(
                 _msgSender(),
                 address(this)
             );
             require(
-                allowance >=
-                    listedItem.OGUNPricePerItem.mul(listedItem.quantity),
+                allowance >= listedItem.OGUNPricePerItem.mul(listedItem.quantity),
                 "insufficient OGUN balance to buy"
             );
             require(
                 listedItem.acceptsOGUN == true,
                 "this purchase can't be done in OGUN"
             );
+        } else if (_isPaymentBTC) {
+            // Placeholder: BTC payment requires off-chain settlement (e.g., via oracle or bridge)
+            require(listedItem.acceptsBTC == true, "BTC not accepted");
+            // Implement BTC payment logic (e.g., via wrapped BTC or oracle)
+            revert("BTC payment not yet implemented; requires bridge integration");
         } else {
             require(
                 msg.value >= listedItem.pricePerItem.mul(listedItem.quantity),
@@ -302,19 +342,23 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             );
         }
 
-        _buyItem(_nftAddress, _tokenId, _owner, _isPaymentOGUN);
+        _buyItem(_nftAddress, _tokenId, _owner, _isPaymentOGUN, _isPaymentBTC);
     }
 
     function _buyItem(
         address _nftAddress,
         uint256 _tokenId,
         address _owner,
-        bool isPaymentOGUN
+        bool isPaymentOGUN,
+        bool isPaymentBTC
     ) private {
         Listing memory listedItem = listings[_nftAddress][_tokenId][_owner];
         uint256 price;
         if (isPaymentOGUN) {
             price = listedItem.OGUNPricePerItem.mul(listedItem.quantity);
+        } else if (isPaymentBTC) {
+            price = listedItem.BTCPricePerItem.mul(listedItem.quantity); // Placeholder
+            revert("BTC payment not yet implemented; requires bridge integration");
         } else {
             price = listedItem.pricePerItem.mul(listedItem.quantity);
         }
@@ -323,6 +367,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         // Platform Fee payment
         if (isPaymentOGUN) {
             OGUNToken.safeTransferFrom(_msgSender(), feeRecipient, feeAmount);
+        } else if (isPaymentBTC) {
+            // Placeholder for BTC fee payment
+            revert("BTC payment not yet implemented; requires bridge integration");
         } else {
             (bool feeTransferSuccess, ) = feeRecipient.call{value: feeAmount}(
                 ""
@@ -336,6 +383,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         if (minter != address(0)) {
             if (isPaymentOGUN) {
                 OGUNToken.safeTransferFrom(_msgSender(), minter, royaltyFee);
+            } else if (isPaymentBTC) {
+                // Placeholder for BTC royalty
+                revert("BTC payment not yet implemented; requires bridge integration");
             } else {
                 (bool royaltyTransferSuccess, ) = payable(minter).call{
                     value: royaltyFee
@@ -363,6 +413,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                 OGUNToken.safeTransfer(_owner, rewardValue);
                 OGUNToken.safeTransfer(_msgSender(), rewardValue);
             }
+        } else if (isPaymentBTC) {
+            // Placeholder for BTC owner payment
+            revert("BTC payment not yet implemented; requires bridge integration");
         } else {
             (bool ownerTransferSuccess, ) = _owner.call{
                 value: price.sub(feeAmount)
@@ -379,7 +432,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             _tokenId,
             listedItem.quantity,
             price.div(listedItem.quantity),
-            isPaymentOGUN
+            isPaymentOGUN,
+            isPaymentBTC,
+            listedItem.chainId
         );
         delete (listings[_nftAddress][_tokenId][_owner]);
     }
@@ -390,18 +445,24 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     /// @param _quantity token amount to list
     /// @param _pricePerItem sale price for each iteam
     /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _BTCPricePerItem New sale price in BTC for each item
     /// @param _acceptsMATIC true in case accepts MATIC as payment
     /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _acceptsBTC true in case accepts BTC as payment
     /// @param _startingTime scheduling for a future sale
+    /// @param _chainId Chain ID for the listing
     function listItem(
         address _nftAddress,
         uint256 _tokenId,
         uint256 _quantity,
         uint256 _pricePerItem,
         uint256 _OGUNPricePerItem,
+        uint256 _BTCPricePerItem,
         bool _acceptsMATIC,
         bool _acceptsOGUN,
-        uint256 _startingTime
+        bool _acceptsBTC,
+        uint256 _startingTime,
+        uint256 _chainId
     ) external notListed(_nftAddress, _tokenId, _msgSender()) {
         if (IERC165(_nftAddress).supportsInterface(INTERFACE_ID_ERC721)) {
             IERC721 nft = IERC721(_nftAddress);
@@ -415,17 +476,21 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         }
 
         require(
-            (_acceptsMATIC || _acceptsOGUN),
+            (_acceptsMATIC || _acceptsOGUN || _acceptsBTC),
             "item should have a way of payment"
         );
+        require(supportedChains[_chainId], "Unsupported chain");
 
         listings[_nftAddress][_tokenId][_msgSender()] = Listing(
             _quantity,
             _pricePerItem,
             _OGUNPricePerItem,
+            _BTCPricePerItem,
             _acceptsMATIC,
             _acceptsOGUN,
-            _startingTime
+            _acceptsBTC,
+            _startingTime,
+            _chainId
         );
         emit ItemListed(
             _msgSender(),
@@ -434,9 +499,12 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
             _quantity,
             _pricePerItem,
             _OGUNPricePerItem,
+            _BTCPricePerItem,
             _acceptsMATIC,
             _acceptsOGUN,
-            _startingTime
+            _acceptsBTC,
+            _startingTime,
+            _chainId
         );
     }
 
@@ -444,24 +512,31 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     /// @param editionNumber edition number
     /// @param _pricePerItem sale price for each iteam
     /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _BTCPricePerItem New sale price in BTC for each item
     /// @param _acceptsMATIC true in case accepts MATIC as payment
     /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _acceptsBTC true in case accepts BTC as payment
     /// @param _startingTime scheduling for a future sale
+    /// @param _chainId Chain ID for the listing
     function listEdition(
         address _nftEditionAddress,
         uint256 editionNumber,
         uint256 _pricePerItem,
         uint256 _OGUNPricePerItem,
+        uint256 _BTCPricePerItem,
         bool _acceptsMATIC,
         bool _acceptsOGUN,
-        uint256 _startingTime
+        bool _acceptsBTC,
+        uint256 _startingTime,
+        uint256 _chainId
     ) external editionNotListed(_nftEditionAddress, editionNumber) {
         editionListings[_nftEditionAddress][editionNumber] = true;
 
         require(
-            (_acceptsMATIC || _acceptsOGUN),
+            (_acceptsMATIC || _acceptsOGUN || _acceptsBTC),
             "item should have a way of payment"
         );
+        require(supportedChains[_chainId], "Unsupported chain");
 
         if (
             IERC165(_nftEditionAddress).supportsInterface(INTERFACE_ID_ERC721)
@@ -487,9 +562,12 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                         1,
                         _pricePerItem,
                         _OGUNPricePerItem,
+                        _BTCPricePerItem,
                         _acceptsMATIC,
                         _acceptsOGUN,
-                        _startingTime
+                        _acceptsBTC,
+                        _startingTime,
+                        _chainId
                     );
                     emit ItemListed(
                         _msgSender(),
@@ -498,14 +576,17 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                         1,
                         _pricePerItem,
                         _OGUNPricePerItem,
+                        _BTCPricePerItem,
                         _acceptsMATIC,
                         _acceptsOGUN,
-                        _startingTime
+                        _acceptsBTC,
+                        _startingTime,
+                        _chainId
                     );
                 }
             }
 
-            emit EditionListed(_nftEditionAddress, editionNumber);
+            emit EditionListed(_nftEditionAddress, editionNumber, _chainId);
         } else {
             revert("invalid nft address");
         }
@@ -515,22 +596,29 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     /// @param tokenIds all token IDs to list
     /// @param _pricePerItem sale price for each iteam
     /// @param _OGUNPricePerItem New sale price in OGUN for each iteam
+    /// @param _BTCPricePerItem New sale price in BTC for each item
     /// @param _acceptsMATIC true in case accepts MATIC as payment
     /// @param _acceptsOGUN true in case accepts OGUN as payment
+    /// @param _acceptsBTC true in case accepts BTC as payment
     /// @param _startingTime scheduling for a future sale
+    /// @param _chainId Chain ID for the listing
     function listBatch(
         address _nftAddress,
         uint256[] memory tokenIds,
         uint256 _pricePerItem,
         uint256 _OGUNPricePerItem,
+        uint256 _BTCPricePerItem,
         bool _acceptsMATIC,
         bool _acceptsOGUN,
-        uint256 _startingTime
+        bool _acceptsBTC,
+        uint256 _startingTime,
+        uint256 _chainId
     ) external {
         require(
-            (_acceptsMATIC || _acceptsOGUN),
+            (_acceptsMATIC || _acceptsOGUN || _acceptsBTC),
             "item should have a way of payment"
         );
+        require(supportedChains[_chainId], "Unsupported chain");
 
         require(tokenIds.length > 0, "tokenIds is empty");
 
@@ -555,9 +643,12 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                         1,
                         _pricePerItem,
                         _OGUNPricePerItem,
+                        _BTCPricePerItem,
                         _acceptsMATIC,
                         _acceptsOGUN,
-                        _startingTime
+                        _acceptsBTC,
+                        _startingTime,
+                        _chainId
                     );
                     emit ItemListed(
                         _msgSender(),
@@ -566,15 +657,62 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
                         1,
                         _pricePerItem,
                         _OGUNPricePerItem,
+                        _BTCPricePerItem,
                         _acceptsMATIC,
                         _acceptsOGUN,
-                        _startingTime
+                        _acceptsBTC,
+                        _startingTime,
+                        _chainId
                     );
                 }
             }
         } else {
             revert("invalid nft address");
         }
+    }
+
+    /// @notice Method for sweeping multiple NFTs from an edition
+    /// @param _nftEditionAddress Address of NFT edition contract
+    /// @param _editionNumber Edition number to sweep
+    /// @param _quantity Quantity to purchase
+    /// @param _isPaymentOGUN true if payment in OGUN
+    /// @param _isPaymentBTC true if payment in BTC
+    function sweepEdition(
+        address _nftEditionAddress,
+        uint256 _editionNumber,
+        uint256 _quantity,
+        bool _isPaymentOGUN,
+        bool _isPaymentBTC
+    ) external payable nonReentrant isEditionListed(_nftEditionAddress, _editionNumber) {
+        IEditions nftEdition = IEditions(_nftEditionAddress);
+        uint256[] memory tokenIds = nftEdition.getTokenIdsOfEdition(_editionNumber);
+        require(tokenIds.length >= _quantity, "Insufficient tokens in edition");
+        require(_quantity > 0 && _quantity <= 1000, "Quantity must be 1-1000"); // Match 1000/1000 limit
+
+        Listing storage listedItem = listings[_nftEditionAddress][tokenIds[0]][msg.sender]; // Assume uniform pricing
+        uint256 totalPrice = listedItem.pricePerItem.mul(_quantity);
+        if (_isPaymentOGUN) totalPrice = listedItem.OGUNPricePerItem.mul(_quantity);
+        else if (_isPaymentBTC) totalPrice = listedItem.BTCPricePerItem.mul(_quantity);
+
+        require(!(_isPaymentOGUN && _isPaymentBTC), "Choose one payment type");
+        if (_isPaymentOGUN) {
+            uint256 allowance = OGUNToken.allowance(msg.sender, address(this));
+            require(allowance >= totalPrice, "Insufficient OGUN allowance");
+            require(listedItem.acceptsOGUN, "OGUN not accepted");
+        } else if (_isPaymentBTC) {
+            require(listedItem.acceptsBTC, "BTC not accepted");
+            revert("BTC payment not yet implemented; requires bridge integration");
+        } else {
+            require(msg.value >= totalPrice, "Insufficient MATIC");
+            require(listedItem.acceptsMATIC, "MATIC not accepted");
+        }
+
+        for (uint256 i = 0; i < _quantity; i++) {
+            if (IERC721(_nftEditionAddress).ownerOf(tokenIds[i]) == msg.sender) continue; // Skip owned tokens
+            _buyItem(_nftEditionAddress, tokenIds[i], IERC721(_nftEditionAddress).ownerOf(tokenIds[i]), _isPaymentOGUN, _isPaymentBTC);
+        }
+
+        emit ItemSold(msg.sender, msg.sender, _nftEditionAddress, _editionNumber, _quantity, totalPrice.div(_quantity), _isPaymentOGUN, _isPaymentBTC, block.chainid);
     }
 
     /**
@@ -628,6 +766,15 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         rewardsLimit = newLimit;
     }
 
+    /**
+     @notice Method for adding a new supported chain
+     @dev Only admin
+     @param _chainId Chain ID to add
+     */
+    function addSupportedChain(uint256 _chainId) external onlyOwner {
+        supportedChains[_chainId] = true;
+    }
+
     ////////////////////////////
     /// Internal and Private ///
     ////////////////////////////
@@ -667,6 +814,6 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         }
 
         delete (listings[_nftAddress][_tokenId][_owner]);
-        emit ItemCanceled(_owner, _nftAddress, _tokenId);
+        emit ItemCanceled(_owner, _nftAddress, _tokenId, block.chainid);
     }
 }
