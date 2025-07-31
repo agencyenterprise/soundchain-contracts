@@ -8,6 +8,7 @@ import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Burnable.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/utils/Counters.sol";
 import "@openzeppelin/contracts/interfaces/IERC2981.sol";
+import "@openzeppelin/contracts/proxy/ERC1967/ERC1967Proxy.sol";
 
 contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burnable, Ownable, IERC2981 {
     using Counters for Counters.Counter;
@@ -15,12 +16,20 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
     Counters.Counter private _tokenIdCounter;
     mapping(uint256 => address) public royaltyReceivers;
     mapping(uint256 => uint8) public royaltyPercentage;
+    address private _implementation;
+    mapping(uint256 => address) private _chainImplementations;
 
-    constructor() ERC721("SoundchainCollectible", "SC") {}
+    constructor() ERC721("SoundchainCollectible", "SC") Ownable() {
+        _implementation = address(this);
+        _chainImplementations[1] = address(this);   // Ethereum
+        _chainImplementations[137] = address(this); // Polygon
+        _chainImplementations[43114] = address(this); // Avalanche (proxy for Solana)
+        _chainImplementations[8453] = address(this); // Base
+        _chainImplementations[205] = address(this);  // Tezos
+    }
 
     function safeMint(address to, string memory _tokenURI, uint8 _royaltyPercentage) public {
-        uint tokenId = _tokenIdCounter.current();
-
+        uint256 tokenId = _tokenIdCounter.current();
         _safeMint(to, tokenId);
         _setTokenURI(tokenId, _tokenURI);
         _tokenIdCounter.increment();
@@ -61,16 +70,35 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
         return type(IERC2981).interfaceId == interfaceId || super.supportsInterface(interfaceId);
     }
 
-    /// @notice Called with the sale price to determine how much royalty
-    //          is owed and to whom.
-    ///         param _tokenId - the NFT asset queried for royalty information (not used)
-    /// @param _salePrice - sale price of the NFT asset specified by _tokenId
-    /// @return receiver - address of who should be sent the royalty payment
-    /// @return royaltyAmount - the royalty payment amount for _value sale price
     function royaltyInfo(uint256 tokenId, uint256 _salePrice) external view override(IERC2981) returns (address receiver, uint256 royaltyAmount) {
         uint8 percentage = royaltyPercentage[tokenId];
         uint256 _royalties = (_salePrice * percentage) / 100;
         address creatorAddress = royaltyReceivers[tokenId];
         return (creatorAddress, _royalties);
+    }
+
+    function upgradeTo(address newImplementation) external onlyOwner {
+        _implementation = newImplementation;
+        uint256 chainId;
+        assembly { chainId := chainid() }
+        _chainImplementations[chainId] = newImplementation;
+    }
+
+    function _implementation() internal view returns (address) {
+        uint256 chainId;
+        assembly { chainId := chainid() }
+        return _chainImplementations[chainId] != address(0) ? _chainImplementations[chainId] : _implementation;
+    }
+
+    fallback() external payable {
+        address impl = _implementation();
+        assembly {
+            calldatacopy(0, 0, calldatasize())
+            let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
+            returndatacopy(0, 0, returndatasize())
+            switch result
+            case 0 { revert(0, returndatasize()) }
+            default { return(0, returndatasize()) }
+        }
     }
 }
