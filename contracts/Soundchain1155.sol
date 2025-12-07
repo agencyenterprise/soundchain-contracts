@@ -12,11 +12,11 @@ contract Soundchain1155 is ERC1155Metadata, ERC1155, Ownable, ERC1155Burnable {
     using Counters for Counters.Counter;
 
     Counters.Counter public _tokenIdCounter;
-    address private _implementation;
+    address private _implAddress;
     mapping(uint256 => address) private _chainImplementations;
 
-    constructor(string memory uri) ERC1155(uri) Ownable() {
-        _implementation = address(this);
+    constructor(string memory _uri) ERC1155(_uri) Ownable() {
+        _implAddress = address(this);
         _chainImplementations[1] = address(this);   // Ethereum
         _chainImplementations[137] = address(this); // Polygon
         _chainImplementations[43114] = address(this); // Avalanche (proxy for Solana)
@@ -40,20 +40,22 @@ contract Soundchain1155 is ERC1155Metadata, ERC1155, Ownable, ERC1155Burnable {
     }
 
     function upgradeTo(address newImplementation) external onlyOwner {
-        _implementation = newImplementation;
+        _implAddress = newImplementation;
         uint256 chainId;
         assembly { chainId := chainid() }
         _chainImplementations[chainId] = newImplementation;
     }
 
-    function _implementation() internal view returns (address) {
+    function _getImplementation() internal view returns (address) {
         uint256 chainId;
         assembly { chainId := chainid() }
-        return _chainImplementations[chainId] != address(0) ? _chainImplementations[chainId] : _implementation;
+        return _chainImplementations[chainId] != address(0) ? _chainImplementations[chainId] : _implAddress;
     }
 
+    receive() external payable {}
+
     fallback() external payable {
-        address impl = _implementation();
+        address impl = _getImplementation();
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)

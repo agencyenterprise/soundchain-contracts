@@ -16,11 +16,11 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
     Counters.Counter private _tokenIdCounter;
     mapping(uint256 => address) public royaltyReceivers;
     mapping(uint256 => uint8) public royaltyPercentage;
-    address private _implementation;
+    address private _implAddress;
     mapping(uint256 => address) private _chainImplementations;
 
     constructor() ERC721("SoundchainCollectible", "SC") Ownable() {
-        _implementation = address(this);
+        _implAddress = address(this);
         _chainImplementations[1] = address(this);   // Ethereum
         _chainImplementations[137] = address(this); // Polygon
         _chainImplementations[43114] = address(this); // Avalanche (proxy for Solana)
@@ -41,11 +41,11 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
         royaltyPercentage[tokenId] = _royaltyPercentage;
     }
 
-    function _beforeTokenTransfer(address from, address to, uint256 tokenId)
+    function _beforeTokenTransfer(address from, address to, uint256 firstTokenId, uint256 batchSize)
         internal
         override(ERC721, ERC721Enumerable)
     {
-        super._beforeTokenTransfer(from, to, tokenId);
+        super._beforeTokenTransfer(from, to, firstTokenId, batchSize);
     }
 
     function _burn(uint256 tokenId) internal override(ERC721, ERC721URIStorage) {
@@ -64,7 +64,7 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721, ERC721Enumerable, IERC165)
+        override(ERC721, ERC721Enumerable, ERC721URIStorage, IERC165)
         returns (bool)
     {
         return type(IERC2981).interfaceId == interfaceId || super.supportsInterface(interfaceId);
@@ -78,20 +78,22 @@ contract Soundchain721 is ERC721, ERC721Enumerable, ERC721URIStorage, ERC721Burn
     }
 
     function upgradeTo(address newImplementation) external onlyOwner {
-        _implementation = newImplementation;
+        _implAddress = newImplementation;
         uint256 chainId;
         assembly { chainId := chainid() }
         _chainImplementations[chainId] = newImplementation;
     }
 
-    function _implementation() internal view returns (address) {
+    function _getImplementation() internal view returns (address) {
         uint256 chainId;
         assembly { chainId := chainid() }
-        return _chainImplementations[chainId] != address(0) ? _chainImplementations[chainId] : _implementation;
+        return _chainImplementations[chainId] != address(0) ? _chainImplementations[chainId] : _implAddress;
     }
 
+    receive() external payable {}
+
     fallback() external payable {
-        address impl = _implementation();
+        address impl = _getImplementation();
         assembly {
             calldatacopy(0, 0, calldatasize())
             let result := delegatecall(gas(), impl, 0, calldatasize(), 0, 0)
