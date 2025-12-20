@@ -2,6 +2,7 @@ import "@nomiclabs/hardhat-ethers";
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-solhint";
 import "@nomiclabs/hardhat-waffle";
+import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
 import dotenv from "dotenv";
 import "hardhat-contract-sizer";
@@ -74,7 +75,7 @@ const config: HardhatUserConfig = {
 
     // ============ Mainnets ============
     polygon: {
-      url: "https://polygon-mainnet.g.alchemy.com/v2/JRptRNLZzr65CeN9PyapuBIFbFMu7CtM",
+      url: process.env.POLYGON_RPC_URL || "https://polygon-rpc.com",
       accounts,
       chainId: 137,
     },

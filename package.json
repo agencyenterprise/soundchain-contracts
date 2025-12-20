@@ -48,6 +48,8 @@
   "dependencies": {
     "@openzeppelin/contracts": "^4.7.2",
     "@openzeppelin/contracts-ethereum-package": "^3.0.0",
+    "@openzeppelin/contracts-upgradeable": "^4.9.0",
+    "@openzeppelin/hardhat-upgrades": "^1.28.0",
     "aws-kms-provider": "^0.4.1",
     "dotenv": "^10.0.0",
     "hardhat-contract-sizer": "^2.0.3",
