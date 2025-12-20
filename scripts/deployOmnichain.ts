@@ -32,13 +32,22 @@ const CONFIG = {
 };
 
 async function main() {
-  const [deployer] = await ethers.getSigners();
+  const signers = await ethers.getSigners();
   const network = await ethers.provider.getNetwork();
 
   console.log("========================================");
   console.log("  SoundChain Omnichain Deployment");
   console.log("========================================");
   console.log(`Network: ${network.name} (chainId: ${network.chainId})`);
+
+  if (signers.length === 0) {
+    console.error("\n❌ ERROR: No deployer account found!");
+    console.error("   Make sure PRIVATE_KEY is set in your .env file:");
+    console.error("   PRIVATE_KEY=your_private_key_without_0x_prefix\n");
+    process.exit(1);
+  }
+
+  const deployer = signers[0];
   console.log(`Deployer: ${deployer.address}`);
   console.log(`Balance: ${ethers.utils.formatEther(await deployer.getBalance())} ETH`);
   console.log("----------------------------------------");

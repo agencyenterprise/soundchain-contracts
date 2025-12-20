@@ -27,13 +27,27 @@ const accounts = PRIVATE_KEY ? [`0x${PRIVATE_KEY}`] : [];
 
 const config: HardhatUserConfig = {
   solidity: {
-    version: "0.8.10",
-    settings: {
-      optimizer: {
-        enabled: true,
-        runs: 200,
+    compilers: [
+      {
+        version: "0.8.10",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+        },
       },
-    },
+      {
+        version: "0.8.20",
+        settings: {
+          optimizer: {
+            enabled: true,
+            runs: 200,
+          },
+          viaIR: true,
+        },
+      },
+    ],
   },
   gasReporter: {
     currency: "USD",

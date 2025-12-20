@@ -1,0 +1,40 @@
+[features]
+seeds = false
+skip-lint = false
+
+[programs.localnet]
+soundchain_scid = "SCidxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+soundchain_marketplace = "SMktxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[programs.devnet]
+soundchain_scid = "SCidxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+soundchain_marketplace = "SMktxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[programs.mainnet]
+soundchain_scid = "SCidxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+soundchain_marketplace = "SMktxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[registry]
+url = "https://api.apr.dev"
+
+[provider]
+cluster = "Localnet"
+wallet = "~/.config/solana/id.json"
+
+[scripts]
+test = "yarn run ts-mocha -p ./tsconfig.json -t 1000000 tests/**/*.ts"
+
+[test]
+startup_wait = 5000
+
+[test.validator]
+url = "https://api.mainnet-beta.solana.com"
+
+# ZetaChain integration endpoints
+[[test.validator.clone]]
+address = "ZETAxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+[workspace]
+members = [
+    "programs/*"
+]

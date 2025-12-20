@@ -87,7 +87,7 @@ contract Soundchain721Editions is ERC721ABurnable, Ownable, IERC2981, IEditions 
     function tokenURI(uint256 tokenId)
         public
         view
-        override(ERC721A)
+        override(ERC721A, IERC721A)
         returns (string memory)
     {
         require(
@@ -114,7 +114,7 @@ contract Soundchain721Editions is ERC721ABurnable, Ownable, IERC2981, IEditions 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(ERC721A, IERC165)
+        override(ERC721A, IERC721A, IERC165)
         returns (bool)
     {
         return type(IERC2981).interfaceId == interfaceId || super.supportsInterface(interfaceId);
