@@ -1,0 +1,630 @@
+{
+  "$schema": "./token-chain-mapping.schema.json",
+  "version": "1.0.0",
+  "lastUpdated": "2025-12-20",
+  "description": "SoundChain Token-Chain Mapping - Single source of truth for all supported tokens across all chains",
+
+  "chains": {
+    "1": {
+      "name": "Ethereum",
+      "shortName": "ETH",
+      "chainId": 1,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://eth.llamarpc.com",
+      "explorer": "https://etherscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "137": {
+      "name": "Polygon",
+      "shortName": "POL",
+      "chainId": 137,
+      "type": "EVM",
+      "nativeToken": "MATIC",
+      "rpcUrl": "https://polygon-rpc.com",
+      "explorer": "https://polygonscan.com",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "42161": {
+      "name": "Arbitrum",
+      "shortName": "ARB",
+      "chainId": 42161,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://arb1.arbitrum.io/rpc",
+      "explorer": "https://arbiscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "10": {
+      "name": "Optimism",
+      "shortName": "OP",
+      "chainId": 10,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://mainnet.optimism.io",
+      "explorer": "https://optimistic.etherscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "8453": {
+      "name": "Base",
+      "shortName": "BASE",
+      "chainId": 8453,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://mainnet.base.org",
+      "explorer": "https://basescan.org",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "43114": {
+      "name": "Avalanche",
+      "shortName": "AVAX",
+      "chainId": 43114,
+      "type": "EVM",
+      "nativeToken": "AVAX",
+      "rpcUrl": "https://api.avax.network/ext/bc/C/rpc",
+      "explorer": "https://snowtrace.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "56": {
+      "name": "BSC",
+      "shortName": "BSC",
+      "chainId": 56,
+      "type": "EVM",
+      "nativeToken": "BNB",
+      "rpcUrl": "https://bsc-dataseed.binance.org",
+      "explorer": "https://bscscan.com",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "250": {
+      "name": "Fantom",
+      "shortName": "FTM",
+      "chainId": 250,
+      "type": "EVM",
+      "nativeToken": "FTM",
+      "rpcUrl": "https://rpc.ftm.tools",
+      "explorer": "https://ftmscan.com",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "7000": {
+      "name": "ZetaChain",
+      "shortName": "ZETA",
+      "chainId": 7000,
+      "type": "EVM",
+      "nativeToken": "ZETA",
+      "rpcUrl": "https://zetachain-evm.blockpi.network/v1/rpc/public",
+      "explorer": "https://explorer.zetachain.com",
+      "gnosisSafe": "",
+      "feeCollector": "",
+      "isHub": true
+    },
+    "81457": {
+      "name": "Blast",
+      "shortName": "BLAST",
+      "chainId": 81457,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://rpc.blast.io",
+      "explorer": "https://blastscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "59144": {
+      "name": "Linea",
+      "shortName": "LINEA",
+      "chainId": 59144,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://rpc.linea.build",
+      "explorer": "https://lineascan.build",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "534352": {
+      "name": "Scroll",
+      "shortName": "SCROLL",
+      "chainId": 534352,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://rpc.scroll.io",
+      "explorer": "https://scrollscan.com",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "324": {
+      "name": "zkSync",
+      "shortName": "ZKSYNC",
+      "chainId": 324,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://mainnet.era.zksync.io",
+      "explorer": "https://explorer.zksync.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "5000": {
+      "name": "Mantle",
+      "shortName": "MNT",
+      "chainId": 5000,
+      "type": "EVM",
+      "nativeToken": "MNT",
+      "rpcUrl": "https://rpc.mantle.xyz",
+      "explorer": "https://explorer.mantle.xyz",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "169": {
+      "name": "Manta",
+      "shortName": "MANTA",
+      "chainId": 169,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://pacific-rpc.manta.network/http",
+      "explorer": "https://pacific-explorer.manta.network",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "34443": {
+      "name": "Mode",
+      "shortName": "MODE",
+      "chainId": 34443,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://mainnet.mode.network",
+      "explorer": "https://explorer.mode.network",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "42220": {
+      "name": "Celo",
+      "shortName": "CELO",
+      "chainId": 42220,
+      "type": "EVM",
+      "nativeToken": "CELO",
+      "rpcUrl": "https://forno.celo.org",
+      "explorer": "https://celoscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "100": {
+      "name": "Gnosis",
+      "shortName": "GNO",
+      "chainId": 100,
+      "type": "EVM",
+      "nativeToken": "xDAI",
+      "rpcUrl": "https://rpc.gnosischain.com",
+      "explorer": "https://gnosisscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "1284": {
+      "name": "Moonbeam",
+      "shortName": "GLMR",
+      "chainId": 1284,
+      "type": "EVM",
+      "nativeToken": "GLMR",
+      "rpcUrl": "https://rpc.api.moonbeam.network",
+      "explorer": "https://moonscan.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "1313161554": {
+      "name": "Aurora",
+      "shortName": "AURORA",
+      "chainId": 1313161554,
+      "type": "EVM",
+      "nativeToken": "ETH",
+      "rpcUrl": "https://mainnet.aurora.dev",
+      "explorer": "https://explorer.aurora.dev",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "25": {
+      "name": "Cronos",
+      "shortName": "CRO",
+      "chainId": 25,
+      "type": "EVM",
+      "nativeToken": "CRO",
+      "rpcUrl": "https://evm.cronos.org",
+      "explorer": "https://cronoscan.com",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "2222": {
+      "name": "Kava",
+      "shortName": "KAVA",
+      "chainId": 2222,
+      "type": "EVM",
+      "nativeToken": "KAVA",
+      "rpcUrl": "https://evm.kava.io",
+      "explorer": "https://explorer.kava.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "1088": {
+      "name": "Metis",
+      "shortName": "METIS",
+      "chainId": 1088,
+      "type": "EVM",
+      "nativeToken": "METIS",
+      "rpcUrl": "https://andromeda.metis.io/?owner=1088",
+      "explorer": "https://andromeda-explorer.metis.io",
+      "gnosisSafe": "",
+      "feeCollector": ""
+    },
+    "solana": {
+      "name": "Solana",
+      "shortName": "SOL",
+      "chainId": "solana-mainnet",
+      "type": "NON_EVM",
+      "nativeToken": "SOL",
+      "rpcUrl": "https://api.mainnet-beta.solana.com",
+      "explorer": "https://solscan.io",
+      "gnosisSafe": "",
+      "feeCollector": "",
+      "programIds": {
+        "scidRegistry": "",
+        "marketplace": ""
+      }
+    }
+  },
+
+  "tokens": {
+    "ETH": {
+      "symbol": "ETH",
+      "name": "Ethereum",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+      "coingeckoId": "ethereum",
+      "addresses": {
+        "1": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "42161": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "10": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "8453": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "81457": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "59144": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "534352": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "324": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "169": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "34443": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "1313161554": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "137": { "address": "0x7ceB23fD6bC0adD59E62ac25578270cFf1b9f619", "type": "wrapped", "name": "WETH" },
+        "43114": { "address": "0x49D5c2BdFfac6CE2BFdB6640F4F80f226bc10bAB", "type": "wrapped", "name": "WETH.e" },
+        "56": { "address": "0x2170Ed0880ac9A755fd29B2688956BD959F933F8", "type": "wrapped", "name": "ETH" },
+        "7000": { "address": "0x13A0c5930C028511Dc02665E7285134B6d11A5f4", "type": "zrc20", "name": "ZRC-20 ETH" }
+      }
+    },
+    "MATIC": {
+      "symbol": "MATIC",
+      "name": "Polygon",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/4713/small/matic-token-icon.png",
+      "coingeckoId": "matic-network",
+      "addresses": {
+        "137": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "1": { "address": "0x7D1AfA7B718fb893dB30A3aBc0Cfc608AaCfeBB0", "type": "erc20" },
+        "56": { "address": "0xCC42724C6683B7E57334c4E856f4c9965ED682bD", "type": "wrapped" },
+        "7000": { "address": "0x48f80608B672DC30DC7e3dbBd0343c5F02C738Eb", "type": "zrc20", "name": "ZRC-20 MATIC" }
+      }
+    },
+    "USDC": {
+      "symbol": "USDC",
+      "name": "USD Coin",
+      "decimals": 6,
+      "icon": "https://assets.coingecko.com/coins/images/6319/small/USD_Coin_icon.png",
+      "coingeckoId": "usd-coin",
+      "addresses": {
+        "1": { "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48", "type": "erc20" },
+        "137": { "address": "0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359", "type": "erc20", "note": "Native USDC" },
+        "137_bridged": { "address": "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174", "type": "bridged", "note": "USDC.e" },
+        "42161": { "address": "0xaf88d065e77c8cC2239327C5EDb3A432268e5831", "type": "erc20", "note": "Native USDC" },
+        "10": { "address": "0x0b2C639c533813f4Aa9D7837CAf62653d097Ff85", "type": "erc20", "note": "Native USDC" },
+        "8453": { "address": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", "type": "erc20" },
+        "43114": { "address": "0xB97EF9Ef8734C71904D8002F8b6Bc66Dd9c48a6E", "type": "erc20" },
+        "56": { "address": "0x8AC76a51cc950d9822D68b83fE1Ad97B32Cd580d", "type": "erc20" },
+        "250": { "address": "0x04068DA6C83AFCFA0e13ba15A6696662335D5B75", "type": "bridged" },
+        "7000": { "address": "0x0cbe0dF132a6c6B4a2974Fa1b7Fb953CF0Cc798a", "type": "zrc20" },
+        "solana": { "address": "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v", "type": "spl" }
+      }
+    },
+    "USDT": {
+      "symbol": "USDT",
+      "name": "Tether",
+      "decimals": 6,
+      "icon": "https://assets.coingecko.com/coins/images/325/small/Tether.png",
+      "coingeckoId": "tether",
+      "addresses": {
+        "1": { "address": "0xdAC17F958D2ee523a2206206994597C13D831ec7", "type": "erc20" },
+        "137": { "address": "0xc2132D05D31c914a87C6611C10748AEb04B58e8F", "type": "erc20" },
+        "42161": { "address": "0xFd086bC7CD5C481DCC9C85ebE478A1C0b69FCbb9", "type": "erc20" },
+        "10": { "address": "0x94b008aA00579c1307B0EF2c499aD98a8ce58e58", "type": "erc20" },
+        "43114": { "address": "0x9702230A8Ea53601f5cD2dc00fDBc13d4dF4A8c7", "type": "erc20" },
+        "56": { "address": "0x55d398326f99059fF775485246999027B3197955", "type": "erc20" },
+        "7000": { "address": "0x7c8dDa80bbBE1254a7aACf3219EBe1481c6E01d7", "type": "zrc20" }
+      }
+    },
+    "SOL": {
+      "symbol": "SOL",
+      "name": "Solana",
+      "decimals": 9,
+      "icon": "https://assets.coingecko.com/coins/images/4128/small/solana.png",
+      "coingeckoId": "solana",
+      "addresses": {
+        "solana": { "address": "So11111111111111111111111111111111111111112", "type": "native" },
+        "1": { "address": "0xD31a59c85aE9D8edEFeC411D448f90841571b89c", "type": "wrapped", "note": "Wormhole SOL" },
+        "7000": { "address": "0x0000000000000000000000000000000000000000", "type": "zrc20", "note": "Coming soon" }
+      }
+    },
+    "BNB": {
+      "symbol": "BNB",
+      "name": "Binance Coin",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/825/small/bnb-icon2_2x.png",
+      "coingeckoId": "binancecoin",
+      "addresses": {
+        "56": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "1": { "address": "0xB8c77482e45F1F44dE1745F52C74426C631bDD52", "type": "erc20" },
+        "7000": { "address": "0x48f80608B672DC30DC7e3dbBd0343c5F02C738Eb", "type": "zrc20" }
+      }
+    },
+    "AVAX": {
+      "symbol": "AVAX",
+      "name": "Avalanche",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/12559/small/Avalanche_Circle_RedWhite_Trans.png",
+      "coingeckoId": "avalanche-2",
+      "addresses": {
+        "43114": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "1": { "address": "0x85f138bfEE4ef8e540890CFb48F620571d67Eda3", "type": "wrapped" },
+        "7000": { "address": "0x0000000000000000000000000000000000000000", "type": "zrc20", "note": "Coming soon" }
+      }
+    },
+    "ZETA": {
+      "symbol": "ZETA",
+      "name": "ZetaChain",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/26463/small/ZETA.png",
+      "coingeckoId": "zetachain",
+      "addresses": {
+        "7000": { "address": "0x0000000000000000000000000000000000000000", "type": "native" },
+        "1": { "address": "0xf091867EC603A6628eD83D274E835539D82e9cc8", "type": "erc20" },
+        "56": { "address": "0x0000000000000000000000000000000000000000", "type": "erc20", "note": "Coming soon" }
+      }
+    },
+    "LINK": {
+      "symbol": "LINK",
+      "name": "Chainlink",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/877/small/chainlink-new-logo.png",
+      "coingeckoId": "chainlink",
+      "addresses": {
+        "1": { "address": "0x514910771AF9Ca656af840dff83E8264EcF986CA", "type": "erc20" },
+        "137": { "address": "0x53E0bca35eC356BD5ddDFebbD1Fc0fD03FaBad39", "type": "erc20" },
+        "42161": { "address": "0xf97f4df75117a78c1A5a0DBb814Af92458539FB4", "type": "erc20" },
+        "10": { "address": "0x350a791Bfc2C21F9Ed5d10980Dad2e2638ffa7f6", "type": "erc20" },
+        "43114": { "address": "0x5947BB275c521040051D82396192181b413227A3", "type": "erc20" },
+        "56": { "address": "0xF8A0BF9cF54Bb92F17374d9e9A321E6a111a51bD", "type": "erc20" }
+      }
+    },
+    "SHIB": {
+      "symbol": "SHIB",
+      "name": "Shiba Inu",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/11939/small/shiba.png",
+      "coingeckoId": "shiba-inu",
+      "addresses": {
+        "1": { "address": "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4cE", "type": "erc20" },
+        "137": { "address": "0x6f8a06447Ff6FcF75d803135a7de15CE88C1d4ec", "type": "bridged" },
+        "56": { "address": "0x2859e4544C4bB03966803b044A93563Bd2D0DD4D", "type": "bridged" }
+      }
+    },
+    "PEPE": {
+      "symbol": "PEPE",
+      "name": "Pepe",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/29850/small/pepe-token.jpeg",
+      "coingeckoId": "pepe",
+      "addresses": {
+        "1": { "address": "0x6982508145454Ce325dDbE47a25d4ec3d2311933", "type": "erc20" },
+        "137": { "address": "0x8e4a79813079c46F0A34B1a0F1b9E6C0E0c7C3D0", "type": "bridged" },
+        "8453": { "address": "0x0000000000000000000000000000000000000000", "type": "bridged", "note": "Check address" }
+      }
+    },
+    "DOGE": {
+      "symbol": "DOGE",
+      "name": "Dogecoin",
+      "decimals": 8,
+      "icon": "https://assets.coingecko.com/coins/images/5/small/dogecoin.png",
+      "coingeckoId": "dogecoin",
+      "addresses": {
+        "56": { "address": "0xbA2aE424d960c26247Dd6c32edC70B295c744C43", "type": "wrapped", "note": "binance-peg DOGE" },
+        "137": { "address": "0xbA777aE3a3C91fCD83EF85bfe65410592Bdd0f7c", "type": "bridged" },
+        "7000": { "address": "0x0000000000000000000000000000000000000000", "type": "zrc20", "note": "Coming soon" }
+      }
+    },
+    "BONK": {
+      "symbol": "BONK",
+      "name": "Bonk",
+      "decimals": 5,
+      "icon": "https://assets.coingecko.com/coins/images/28600/small/bonk.jpg",
+      "coingeckoId": "bonk",
+      "addresses": {
+        "solana": { "address": "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263", "type": "spl" },
+        "1": { "address": "0x1151CB3d861920e07a38e03eEAd12C32178567F6", "type": "bridged" },
+        "137": { "address": "0xe5B49820e5A1063F6F4DdF851327b5E8B2301048", "type": "bridged" }
+      }
+    },
+    "BTC": {
+      "symbol": "BTC",
+      "name": "Bitcoin",
+      "decimals": 8,
+      "icon": "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+      "coingeckoId": "bitcoin",
+      "addresses": {
+        "1": { "address": "0x2260FAC5E5542a773Aa44fBCfeDf7C193bc2C599", "type": "wrapped", "name": "WBTC" },
+        "137": { "address": "0x1BFD67037B42Cf73acF2047067bd4F2C47D9BfD6", "type": "wrapped", "name": "WBTC" },
+        "42161": { "address": "0x2f2a2543B76A4166549F7aaB2e75Bef0aefC5B0f", "type": "wrapped", "name": "WBTC" },
+        "43114": { "address": "0x50b7545627a5162F82A992c33b87aDc75187B218", "type": "wrapped", "name": "WBTC.e" },
+        "56": { "address": "0x7130d2A12B9BCbFAe4f2634d864A1Ee1Ce3Ead9c", "type": "wrapped", "name": "BTCB" },
+        "7000": { "address": "0x13A0c5930C028511Dc02665E7285134B6d11A5f4", "type": "zrc20", "name": "ZRC-20 BTC" }
+      }
+    },
+    "LTC": {
+      "symbol": "LTC",
+      "name": "Litecoin",
+      "decimals": 8,
+      "icon": "https://assets.coingecko.com/coins/images/2/small/litecoin.png",
+      "coingeckoId": "litecoin",
+      "addresses": {
+        "56": { "address": "0x4338665CBB7B2485A8855A139b75D5e34AB0DB94", "type": "wrapped", "name": "LTC" }
+      },
+      "nonEvm": {
+        "native": "litecoin-mainnet",
+        "note": "Native LTC requires ZetaChain bridge"
+      }
+    },
+    "XRP": {
+      "symbol": "XRP",
+      "name": "Ripple",
+      "decimals": 6,
+      "icon": "https://assets.coingecko.com/coins/images/44/small/xrp-symbol-white-128.png",
+      "coingeckoId": "ripple",
+      "addresses": {
+        "56": { "address": "0x1D2F0da169ceB9fC7B3144628dB156f3F6c60dBE", "type": "wrapped", "name": "XRP" }
+      },
+      "nonEvm": {
+        "native": "xrpl-mainnet",
+        "note": "Native XRP requires bridge"
+      }
+    },
+    "XTZ": {
+      "symbol": "XTZ",
+      "name": "Tezos",
+      "decimals": 6,
+      "icon": "https://assets.coingecko.com/coins/images/976/small/Tezos-logo.png",
+      "coingeckoId": "tezos",
+      "addresses": {},
+      "nonEvm": {
+        "native": "tezos-mainnet",
+        "note": "Tezos is non-EVM, requires dedicated integration"
+      }
+    },
+    "SUI": {
+      "symbol": "SUI",
+      "name": "Sui",
+      "decimals": 9,
+      "icon": "https://assets.coingecko.com/coins/images/26375/small/sui_asset.jpeg",
+      "coingeckoId": "sui",
+      "addresses": {},
+      "nonEvm": {
+        "native": "sui-mainnet",
+        "note": "Sui is non-EVM, requires dedicated integration"
+      }
+    },
+    "HBAR": {
+      "symbol": "HBAR",
+      "name": "Hedera",
+      "decimals": 8,
+      "icon": "https://assets.coingecko.com/coins/images/3688/small/hbar.png",
+      "coingeckoId": "hedera-hashgraph",
+      "addresses": {},
+      "nonEvm": {
+        "native": "hedera-mainnet",
+        "note": "Hedera requires dedicated integration"
+      }
+    },
+    "OGUN": {
+      "symbol": "OGUN",
+      "name": "SoundChain Token",
+      "decimals": 18,
+      "icon": "/images/tokens/ogun.png",
+      "coingeckoId": null,
+      "addresses": {
+        "137": { "address": "0x0000000000000000000000000000000000000000", "type": "erc20", "note": "TBD - Deploy" }
+      },
+      "custom": true,
+      "note": "SoundChain native token - to be deployed"
+    },
+    "YZY": {
+      "symbol": "YZY",
+      "name": "Yeezy",
+      "decimals": 18,
+      "icon": "/images/tokens/yzy.png",
+      "coingeckoId": null,
+      "addresses": {},
+      "custom": true,
+      "note": "Custom SoundChain token - to be deployed"
+    },
+    "MEATEOR": {
+      "symbol": "MEATEOR",
+      "name": "Meateor",
+      "decimals": 9,
+      "icon": "/images/tokens/meateor.png",
+      "coingeckoId": null,
+      "addresses": {
+        "solana": { "address": "", "type": "spl", "note": "Solana meme token - add contract address" }
+      },
+      "custom": false,
+      "note": "Solana meme token"
+    },
+    "PENGU": {
+      "symbol": "PENGU",
+      "name": "Pudgy Penguins",
+      "decimals": 18,
+      "icon": "https://assets.coingecko.com/coins/images/33863/small/PENGU_Logo.png",
+      "coingeckoId": "pudgy-penguins",
+      "addresses": {
+        "1": { "address": "0x0000000000000000000000000000000000000000", "type": "erc20", "note": "Check address" },
+        "solana": { "address": "0x0000000000000000000000000000000000000000", "type": "spl", "note": "Check address" }
+      }
+    },
+    "BASE": {
+      "symbol": "BASE",
+      "name": "Base",
+      "decimals": 18,
+      "icon": "/images/tokens/base.png",
+      "coingeckoId": null,
+      "addresses": {
+        "8453": { "address": "0x0000000000000000000000000000000000000000", "type": "erc20", "note": "Check if exists" }
+      },
+      "note": "Base chain ecosystem token - verify existence"
+    }
+  },
+
+  "feeCollection": {
+    "rate": 5,
+    "rateBasisPoints": "0.05%",
+    "description": "Platform fee collected on all transactions",
+    "collectedIn": {
+      "strategy": "native",
+      "note": "Fees collected in native token of the chain where transaction occurs"
+    }
+  },
+
+  "zetachainZRC20": {
+    "description": "ZetaChain ZRC-20 wrapped tokens for cross-chain operations",
+    "contracts": {
+      "ETH": "0x13A0c5930C028511Dc02665E7285134B6d11A5f4",
+      "BTC": "0x13A0c5930C028511Dc02665E7285134B6d11A5f4",
+      "BNB": "0x48f80608B672DC30DC7e3dbBd0343c5F02C738Eb",
+      "MATIC": "0x48f80608B672DC30DC7e3dbBd0343c5F02C738Eb",
+      "USDC": "0x0cbe0dF132a6c6B4a2974Fa1b7Fb953CF0Cc798a",
+      "USDT": "0x7c8dDa80bbBE1254a7aACf3219EBe1481c6E01d7"
+    },
+    "gateway": "0x48bEe5e48d30D2017B3c6f3e1C3B8ddF0E94D7C5"
+  },
+
+  "nonEvmIntegration": {
+    "supported": ["solana"],
+    "planned": ["bitcoin", "litecoin", "dogecoin"],
+    "requiresBridge": ["xrp", "xtz", "sui", "hbar"],
+    "note": "Non-EVM chains require ZetaChain bridge or custom integration"
+  }
+}
