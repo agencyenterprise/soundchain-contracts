@@ -1,20 +1,162 @@
-# SoundChain Omnichain Contracts - HANDOFF
+# SoundChain Contracts - HANDOFF
 
-**Priority: HIGH - Complete Before Launch**
-**Last Updated: December 20, 2025**
-**Status: Architecture Complete, Pending Deployment**
-
----
-
-## Executive Summary
-
-The SoundChain omnichain infrastructure is now architecturally complete. This handoff documents everything needed to deploy and activate the 0.05% fee collection system across 23+ chains.
+**Priority: HIGH - Blockchain Optimization Phase**
+**Last Updated: January 2, 2026**
+**Status: StreamingRewardsDistributor Ready for Deployment**
 
 ---
 
-## What Was Built
+## ECOSYSTEM MERKLE TREE
 
-### Smart Contracts (EVM - Solidity)
+```
+soundchain/
+├── MASTER_HANDOFF.md ────────────── Root ecosystem handoff (this links all)
+├── HANDOFF.md ───────────────────── Main development handoff
+│
+├── web/ ─────────────────────────── Frontend (Next.js)
+│   ├── HANDOFF.md ───────────────── Frontend-specific handoff
+│   └── HANDOFF_TO_CLAUDE_CODE.md ── Claude Code integration notes
+│
+├── api/ ─────────────────────────── Backend (NestJS/GraphQL)
+│   └── (inline in main HANDOFF)
+│
+├── soundchain-contracts/ ────────── Smart Contracts (This file)
+│   └── HANDOFF.md ───────────────── Contract deployment & AWS config
+│
+└── soundchain-agent/ ────────────── AI Agent
+    └── HANDOFF_2025-12-07.md ────── Agent development notes
+```
+
+---
+
+## AWS INFRASTRUCTURE
+
+### KMS Keys (us-east-1)
+
+| Key ID | Purpose | Type |
+|--------|---------|------|
+| `267075a7-2547-48a8-a737-49d13ddd1146` | **PROD-KEY** - Production Ethereum signing | ECC_SECG_P256K1 |
+| `0e454c9f-34a2-4d22-8684-5d787e358886` | Backup Ethereum signing | ECC_SECG_P256K1 |
+
+### IAM User
+```
+Account: 271937159223
+User: frank-chavez
+ARN: arn:aws:iam::271937159223:user/frank-chavez
+```
+
+### RPC Endpoints
+
+| Network | URL |
+|---------|-----|
+| Polygon Mainnet | `https://polygon-mainnet.g.alchemy.com/v2/-6cS3AFE-iS1ZCnh-bNLQGRM1Gif9t-8` |
+| Polygon Mumbai | `https://polygon-mumbai.g.alchemy.com/v2/aMF793l_JpVtk7RaER-KZZW4vH7vWXiH` |
+
+### API Keys
+```
+POLYGONSCAN_API_KEY=YIX26G28GVEREYG43W391ZSBYQIME2VYD5
+```
+
+---
+
+## DEPLOYED CONTRACTS (Polygon Mainnet)
+
+| Contract | Address | Status |
+|----------|---------|--------|
+| OGUN Token | `0x99Db69EEe7637101FA216Ab4A3276eBedC63e146` | LIVE |
+| Marketplace | `0x...` | LIVE |
+| StreamingRewardsDistributor | **PENDING DEPLOYMENT** | Ready |
+
+---
+
+## STREAMING REWARDS DISTRIBUTOR (NEW - Jan 2, 2026)
+
+### Contract Features
+
+```solidity
+// Distribution Functions
+submitReward(user, scid, amount, isNft)                    // Single recipient
+submitRewardWithListenerSplit(creator, listener, ...)      // 50/50 split
+submitRewardWithCollaborators(creator, collaborators[], ...)  // Collaborator splits
+submitRewardFull(creator, listener, collaborators[], ...)  // Full split
+
+// Admin Functions
+setProtocolFee(feeBps, feeRecipient)   // Set 0.05% fee (5 bps)
+setListenerSplit(listenerBps)           // Default 50% (5000 bps)
+authorizeDistributor(address)           // Authorize backend service
+```
+
+### Reward Flow
+```
+Stream Event (30+ seconds)
+         ↓
+   [Total Reward: 0.5 OGUN (NFT) / 0.05 OGUN (non-NFT)]
+         ↓
+   [0.05% Protocol Fee → SoundChain Treasury]
+         ↓
+   [99.95% splits:]
+   ├── 50% → Listener (streamer)
+   └── 50% → Creator pool
+               ├── Collaborator 1 (royalty %)
+               ├── Collaborator 2 (royalty %)
+               └── Primary Creator (remainder)
+```
+
+### Environment Setup (.env)
+```bash
+# AWS KMS for Ethereum signing
+AWS_KMS_KEY_ID=267075a7-2547-48a8-a737-49d13ddd1146
+
+# Polygon Mainnet
+POLYGON_ALCHEMY_URL=https://polygon-mainnet.g.alchemy.com/v2/-6cS3AFE-iS1ZCnh-bNLQGRM1Gif9t-8
+
+# OGUN Token
+OGUN_TOKEN_ADDRESS=0x99Db69EEe7637101FA216Ab4A3276eBedC63e146
+
+# Verification
+POLYGONSCAN_API_KEY=YIX26G28GVEREYG43W391ZSBYQIME2VYD5
+```
+
+### Deployment Command
+```bash
+cd soundchain-contracts
+npx hardhat run scripts/deployStreamingRewards.ts --network polygon
+```
+
+### Post-Deployment Steps
+```bash
+# 1. Set protocol fee (0.05% = 5 bps)
+cast send $CONTRACT "setProtocolFee(uint256,address)" 5 $TREASURY_ADDRESS
+
+# 2. Authorize backend service
+cast send $CONTRACT "authorizeDistributor(address)" $BACKEND_WALLET
+
+# 3. Fund contract with OGUN from Trading Fee Rewards treasury
+cast send $OGUN_TOKEN "transfer(address,uint256)" $CONTRACT $AMOUNT
+```
+
+---
+
+## TOKEN DISTRIBUTION TREASURY
+
+From [GitBook](https://soundchain.gitbook.io/soundchain/token/ogun):
+
+| Allocation | % | OGUN | Purpose |
+|------------|---|------|---------|
+| Trading Fee Rewards | 20% | 200,000,000 | **← STREAMING REWARDS SOURCE** |
+| Staking Rewards | 20% | 200,000,000 | Staking incentives |
+| Treasury (Dev Team) | 10% | 100,000,000 | Operations |
+| Founding Team | 20% | 200,000,000 | Team allocation |
+| Airdrop | 15% | 150,000,000 | Community |
+| Liquidity Pool Rewards | 10% | 100,000,000 | LP incentives |
+| Strategic Partnerships | 3% | 30,000,000 | Partners |
+| Initial Liquidity | 2% | 20,000,000 | DEX liquidity |
+
+---
+
+## OMNICHAIN INFRASTRUCTURE
+
+### Contracts Ready for Deployment
 
 | Contract | Purpose | Status |
 |----------|---------|--------|
@@ -27,263 +169,86 @@ The SoundChain omnichain infrastructure is now architecturally complete. This ha
 | `SCidRegistry.sol` | On-chain SCid registration | Compiled |
 | `SoundchainFeeCollector.sol` | Fee collection and Gnosis Safe routing | Compiled |
 
-### Smart Contracts (Solana - Rust/Anchor)
+### 23 Supported Chains
 
-| Program | Purpose | Status |
-|---------|---------|--------|
-| `soundchain-scid` | SCid registry for Solana | Written |
-| `soundchain-marketplace` | Multi-token marketplace for Solana | Written |
-
-### Configuration Files
-
-| File | Purpose |
-|------|---------|
-| `config/token-chain-mapping.json` | Complete token-chain mapping (24 tokens × 23 chains) |
-| `Anchor.toml` | Solana program configuration |
-
-### Deployment Scripts
-
-| Script | Purpose |
-|--------|---------|
-| `scripts/deploy-omnichain-router.ts` | Deploy Grand Central Station |
-| `scripts/deploy-chain-connector.ts` | Deploy per-chain connectors |
-| `scripts/deploy-token-listing-proxy.ts` | Deploy token listings |
-| `scripts/deploy-bundle-listing-proxy.ts` | Deploy bundle system |
-| `scripts/deploy-multi-token-marketplace.ts` | Deploy marketplace |
-| `scripts/deploy-sweep-proxy.ts` | Deploy sweep operations |
-| `scripts/deploy-scid-registry.ts` | Deploy SCid registry |
+| Chain | Native Token | RPC Status |
+|-------|--------------|------------|
+| Ethereum | ETH | Ready |
+| Polygon | MATIC | Ready |
+| Base | ETH | Ready |
+| Arbitrum | ETH | Ready |
+| Optimism | ETH | Ready |
+| BSC | BNB | Ready |
+| Avalanche | AVAX | Ready |
+| ZetaChain | ZETA | Ready |
+| Blast | ETH | Ready |
+| Linea | ETH | Ready |
+| Scroll | ETH | Ready |
+| zkSync | ETH | Ready |
+| Mantle | MNT | Ready |
+| Manta | ETH | Ready |
+| Mode | ETH | Ready |
+| Celo | CELO | Ready |
+| Gnosis | xDAI | Ready |
+| Moonbeam | GLMR | Ready |
+| Aurora | ETH | Ready |
+| Cronos | CRO | Ready |
+| Kava | KAVA | Ready |
+| Metis | METIS | Ready |
+| Solana | SOL | Ready |
 
 ---
 
-## What's Left To Do
-
-### 1. Create Gnosis Safe Wallets (YOU MUST DO THIS)
-
-Create a Gnosis Safe on each chain at [safe.global](https://app.safe.global):
+## GIT COMMITS (Jan 2, 2026)
 
 ```
-# Fill in after creating each Safe
-
-ETHEREUM_SAFE=
-POLYGON_SAFE=
-ARBITRUM_SAFE=
-OPTIMISM_SAFE=
-BASE_SAFE=
-AVALANCHE_SAFE=
-BSC_SAFE=
-FANTOM_SAFE=
-ZETACHAIN_SAFE=
-BLAST_SAFE=
-LINEA_SAFE=
-SCROLL_SAFE=
-ZKSYNC_SAFE=
-MANTLE_SAFE=
-MANTA_SAFE=
-MODE_SAFE=
-CELO_SAFE=
-GNOSIS_SAFE=
-MOONBEAM_SAFE=
-AURORA_SAFE=
-CRONOS_SAFE=
-KAVA_SAFE=
-METIS_SAFE=
+4fce64a feat: Add listener rewards, collaborator splits, and protocol fee
+ce03329 feat: Add StreamingRewardsDistributor contract
 ```
 
-**Setup per Safe:**
-- Owners: 2-3 hardware wallet addresses (Ledger/Trezor)
-- Threshold: 2 of 3 signatures required
-- Name: `SoundChain-[ChainName]`
+---
 
-### 2. Deploy Contracts (Deployment Order)
+## LINKED HANDOFFS
+
+| File | Location | Purpose |
+|------|----------|---------|
+| Main HANDOFF | `/soundchain/HANDOFF.md` | Primary development handoff |
+| Web HANDOFF | `/soundchain/web/HANDOFF.md` | Frontend notes |
+| Agent HANDOFF | `/soundchain/soundchain-agent/HANDOFF_2025-12-07.md` | AI agent notes |
+| This File | `/soundchain-contracts/HANDOFF.md` | Blockchain & contracts |
+
+---
+
+## QUICK COMMANDS
 
 ```bash
-# Step 1: Deploy OmnichainRouter on ZetaChain first
-export FEE_COLLECTOR=$ZETACHAIN_SAFE
-npx hardhat run scripts/deploy-omnichain-router.ts --network zetachain
+# Compile contracts
+npx hardhat compile
 
-# Step 2: Save the OmnichainRouter address
-export OMNICHAIN_ROUTER=0x... # from step 1
+# Deploy streaming rewards
+npx hardhat run scripts/deployStreamingRewards.ts --network polygon
 
-# Step 3: Deploy ChainConnector on each chain
-npx hardhat run scripts/deploy-chain-connector.ts --network ethereum
-npx hardhat run scripts/deploy-chain-connector.ts --network polygon
-npx hardhat run scripts/deploy-chain-connector.ts --network base
-# ... repeat for all 23 chains
+# Verify contract
+npx hardhat verify --network polygon $ADDRESS $OGUN_TOKEN_ADDRESS
 
-# Step 4: Deploy marketplace contracts on Polygon
-npx hardhat run scripts/deploy-token-listing-proxy.ts --network polygon
-npx hardhat run scripts/deploy-bundle-listing-proxy.ts --network polygon
-npx hardhat run scripts/deploy-multi-token-marketplace.ts --network polygon
-npx hardhat run scripts/deploy-sweep-proxy.ts --network polygon
-npx hardhat run scripts/deploy-scid-registry.ts --network polygon
-```
+# Check AWS identity
+aws sts get-caller-identity
 
-### 3. Update Fee Collectors After Deployment
-
-Run this for each deployed contract:
-```solidity
-// Call these functions to set Gnosis Safe as fee collector
-contract.setFeeCollector(GNOSIS_SAFE_ADDRESS)
-contract.setGnosisSafe(GNOSIS_SAFE_ADDRESS)
-```
-
-### 4. Verify Contracts on Block Explorers
-
-```bash
-npx hardhat verify --network polygon $CONTRACT_ADDRESS
-npx hardhat verify --network ethereum $CONTRACT_ADDRESS
-# ... repeat for each chain
+# List KMS keys
+aws kms list-keys --region us-east-1
 ```
 
 ---
 
-## Fee Collection Architecture
+## SECURITY CHECKLIST
 
-```
-User Transaction on Any Chain
-          │
-          ▼
-    ChainConnector (spoke)
-          │
-          ▼
-    OmnichainRouter (ZetaChain hub)
-          │
-          ▼
-    0.05% Fee Extracted
-          │
-          ├──▶ Native token stays on chain
-          │
-          ▼
-    Gnosis Safe (per chain)
-```
-
-### Revenue Streams (23 chains)
-
-| Chain | Native Fee Token | Gnosis Safe |
-|-------|------------------|-------------|
-| Ethereum | ETH | TBD |
-| Polygon | MATIC | TBD |
-| Base | ETH | TBD |
-| Arbitrum | ETH | TBD |
-| Optimism | ETH | TBD |
-| BSC | BNB | TBD |
-| Avalanche | AVAX | TBD |
-| ZetaChain | ZETA | TBD |
-| Blast | ETH | TBD |
-| Linea | ETH | TBD |
-| Scroll | ETH | TBD |
-| zkSync | ETH | TBD |
-| Mantle | MNT | TBD |
-| Manta | ETH | TBD |
-| Mode | ETH | TBD |
-| Celo | CELO | TBD |
-| Gnosis | xDAI | TBD |
-| Moonbeam | GLMR | TBD |
-| Aurora | ETH | TBD |
-| Cronos | CRO | TBD |
-| Kava | KAVA | TBD |
-| Metis | METIS | TBD |
-| Solana | SOL | TBD |
-
----
-
-## Token Support
-
-### 24 Supported Tokens
-
-1. ETH, MATIC, SOL, BNB, AVAX, ZETA (native chains)
-2. USDC, USDT (stablecoins - most chains)
-3. LINK, SHIB, PEPE, DOGE, BONK (meme/DeFi)
-4. BTC, LTC, XRP (wrapped versions)
-5. XTZ, SUI, HBAR (non-EVM - bridge required)
-6. OGUN, YZY, MEATEOR, PENGU, BASE (custom/ecosystem)
-
-### Token Mapping File
-
-See `config/token-chain-mapping.json` for complete addresses.
-
----
-
-## Non-EVM Chains
-
-### Solana (Ready)
-- Programs written in `programs/soundchain-scid/` and `programs/soundchain-marketplace/`
-- Deploy with Anchor CLI
-
-### Planned (ZetaChain Bridge)
-- Bitcoin, Litecoin, Dogecoin (native)
-- All accessible via ZRC-20 tokens on ZetaChain
-
-### Requires Custom Integration
-- XRP Ledger, Tezos, Sui, Hedera
-- Accept wrapped versions on EVM chains for now
-
----
-
-## API Integration (Already Done)
-
-### Auto SCid Registration
-Location: `api/src/resolvers/TrackResolver.ts`
-
-```typescript
-// When NFT is minted, SCid is auto-registered on-chain
-if (changes.nftData?.tokenId !== undefined && changes.nftData?.contract) {
-  await scidService.registerOnChain(scid, ownerWallet, tokenId, contract, metadataHash, chainId);
-}
-```
-
-### Required Environment Variables (API)
-```bash
-SCID_REGISTRY_ADDRESS=0x...
-SCID_REGISTRY_PRIVATE_KEY=0x...
-POLYGON_RPC_URL=https://polygon-rpc.com
-```
-
----
-
-## Security Checklist
-
-- [ ] All Gnosis Safes use hardware wallets as signers
+- [ ] All private keys stored in AWS KMS (not in code)
+- [ ] Gnosis Safe wallets use hardware wallet signers
 - [ ] 2-of-3 threshold on all Safes
 - [ ] Contracts verified on block explorers
-- [ ] Private keys stored in secure vault (not in code)
-- [ ] Fee collector addresses double-checked before deployment
-- [ ] Test on testnets before mainnet
+- [ ] Fee recipient addresses double-checked
+- [ ] Test on Amoy testnet before mainnet
 
 ---
 
-## Testnet Deployment (Recommended First)
-
-```bash
-# Polygon Amoy testnet
-npx hardhat run scripts/deploy-scid-registry.ts --network amoy
-
-# ZetaChain testnet
-npx hardhat run scripts/deploy-omnichain-router.ts --network zetachain_testnet
-
-# Base Sepolia
-npx hardhat run scripts/deploy-chain-connector.ts --network base_sepolia
-```
-
----
-
-## Contact & Resources
-
-- **ZetaChain Docs**: https://docs.zetachain.com
-- **Gnosis Safe**: https://app.safe.global
-- **OpenZeppelin**: https://docs.openzeppelin.com
-
----
-
-## Git Commits Made
-
-1. `a1dba42b4` - fix: Add ethers dependency for SCidContract (API)
-2. `e33b128` - feat: Complete omnichain contract suite with Solana support
-
----
-
-**Next Step**: Create Gnosis Safe wallets on each chain, then deploy!
-
----
-
-*This handoff was generated on December 20, 2025. Happy holidays! 🎄*
+*Updated: January 2, 2026 - StreamingRewardsDistributor with listener/collaborator splits ready for deployment*
