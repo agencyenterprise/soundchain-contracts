@@ -9,13 +9,19 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
  * @title StreamingRewardsDistributor
- * @notice Distributes OGUN tokens to artists based on streaming activity
+ * @notice Distributes OGUN tokens to artists and listeners based on streaming activity
  * @dev Called by authorized backend service after validating stream data
  *
  * Reward Tiers:
  * - NFT mints (with tokenId): 0.5 OGUN per stream
  * - Non-NFT mints: 0.05 OGUN per stream
  * - Max 100 OGUN per track per day (anti-bot farming)
+ *
+ * Distribution Options:
+ * - Single recipient (creator only)
+ * - Creator + Listener split (50/50 default, configurable)
+ * - Creator + Collaborators (based on royalty percentages)
+ * - Full split: Creator + Listener + Collaborators
  */
 contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
     using SafeERC20 for IERC20;
@@ -24,9 +30,14 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
     event RewardsClaimed(address indexed user, uint256 amount, bytes32 indexed scidHash);
     event RewardsStaked(address indexed user, uint256 amount, bytes32 indexed scidHash);
     event BatchRewardsClaimed(address indexed user, uint256 totalAmount, uint256 claimCount);
+    event ListenerRewardClaimed(address indexed listener, address indexed creator, uint256 listenerAmount, uint256 creatorAmount, bytes32 indexed scidHash);
+    event CollaboratorRewardClaimed(address indexed collaborator, uint256 amount, bytes32 indexed scidHash);
     event DistributorAuthorized(address indexed distributor);
     event DistributorRevoked(address indexed distributor);
     event StakingContractUpdated(address indexed stakingContract);
+    event ListenerSplitUpdated(uint256 listenerBps);
+    event ProtocolFeeUpdated(uint256 feeBps, address indexed feeRecipient);
+    event ProtocolFeeCollected(address indexed recipient, uint256 amount, bytes32 indexed scidHash);
     event EmergencyWithdraw(address indexed owner, uint256 amount);
 
     // OGUN token
@@ -52,9 +63,21 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
     uint256 public constant NFT_REWARD_RATE = 5 * 10**17;      // 0.5 OGUN (18 decimals)
     uint256 public constant BASE_REWARD_RATE = 5 * 10**16;     // 0.05 OGUN (18 decimals)
     uint256 public constant MAX_DAILY_REWARDS = 100 * 10**18;  // 100 OGUN per track per day
+    uint256 public constant BASIS_POINTS = 10000;              // 100% = 10000 bps
+
+    // Listener reward split (in basis points, default 5000 = 50%)
+    uint256 public listenerSplitBps = 5000;
+
+    // Protocol fee (in basis points, default 5 = 0.05%)
+    uint256 public protocolFeeBps = 5;
+    address public feeRecipient;
 
     // Total rewards distributed
     uint256 public totalRewardsDistributed;
+    uint256 public totalListenerRewards;
+    uint256 public totalCreatorRewards;
+    uint256 public totalCollaboratorRewards;
+    uint256 public totalProtocolFees;
 
     // Nonce for replay protection
     mapping(address => uint256) public nonces;
@@ -127,7 +150,53 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
         emit EmergencyWithdraw(to, balance);
     }
 
+    /**
+     * @notice Set the listener reward split percentage
+     * @param _listenerSplitBps Split in basis points (5000 = 50%)
+     */
+    function setListenerSplit(uint256 _listenerSplitBps) external onlyOwner {
+        require(_listenerSplitBps <= BASIS_POINTS, "Invalid split percentage");
+        listenerSplitBps = _listenerSplitBps;
+        emit ListenerSplitUpdated(_listenerSplitBps);
+    }
+
+    /**
+     * @notice Set the protocol fee and recipient
+     * @param _protocolFeeBps Fee in basis points (5 = 0.05%, max 100 = 1%)
+     * @param _feeRecipient Address to receive protocol fees (treasury)
+     */
+    function setProtocolFee(uint256 _protocolFeeBps, address _feeRecipient) external onlyOwner {
+        require(_protocolFeeBps <= 100, "Fee too high (max 1%)");
+        require(_feeRecipient != address(0), "Invalid fee recipient");
+        protocolFeeBps = _protocolFeeBps;
+        feeRecipient = _feeRecipient;
+        emit ProtocolFeeUpdated(_protocolFeeBps, _feeRecipient);
+    }
+
     // ==================== DISTRIBUTOR FUNCTIONS ====================
+
+    /**
+     * @notice Internal function to calculate and collect protocol fee
+     * @param totalAmount The total amount before fees
+     * @param scidHash The SCid hash for event emission
+     * @return netAmount Amount after fee deduction
+     */
+    function _collectProtocolFee(uint256 totalAmount, bytes32 scidHash) internal returns (uint256 netAmount) {
+        if (protocolFeeBps == 0 || feeRecipient == address(0)) {
+            return totalAmount;
+        }
+
+        uint256 feeAmount = (totalAmount * protocolFeeBps) / BASIS_POINTS;
+        netAmount = totalAmount - feeAmount;
+
+        if (feeAmount > 0) {
+            totalProtocolFees += feeAmount;
+            ogunToken.safeTransfer(feeRecipient, feeAmount);
+            emit ProtocolFeeCollected(feeRecipient, feeAmount, scidHash);
+        }
+
+        return netAmount;
+    }
 
     /**
      * @notice Submit a reward claim for a user
@@ -163,16 +232,19 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
         uint256 expectedRate = isNft ? NFT_REWARD_RATE : BASE_REWARD_RATE;
         require(amount <= expectedRate * 10, "Amount exceeds max per claim"); // Allow batch up to 10 streams
 
+        // Collect protocol fee (0.05%)
+        uint256 netAmount = _collectProtocolFee(amount, scidHash);
+
         // Update tracking
         dailyRewardsByScid[scidHash] += amount;
         claimedByScid[scidHash] += amount;
-        claimedByWallet[user] += amount;
+        claimedByWallet[user] += netAmount;
         totalRewardsDistributed += amount;
 
-        // Transfer OGUN to user
-        ogunToken.safeTransfer(user, amount);
+        // Transfer OGUN to user (after fee)
+        ogunToken.safeTransfer(user, netAmount);
 
-        emit RewardsClaimed(user, amount, scidHash);
+        emit RewardsClaimed(user, netAmount, scidHash);
     }
 
     /**
@@ -294,6 +366,244 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
                 // Note: This is simplified - production should track per-batch amounts
             }
         }
+    }
+
+    /**
+     * @notice Submit reward with listener/creator split (50/50 by default)
+     * @param creator Address of the track creator
+     * @param listener Address of the listener/streamer
+     * @param scid The SCid string
+     * @param totalAmount Total OGUN reward to split
+     * @param isNft Whether this is an NFT track
+     */
+    function submitRewardWithListenerSplit(
+        address creator,
+        address listener,
+        string calldata scid,
+        uint256 totalAmount,
+        bool isNft
+    ) external onlyAuthorizedDistributor whenNotPaused nonReentrant {
+        require(creator != address(0), "Invalid creator address");
+        require(listener != address(0), "Invalid listener address");
+        require(totalAmount > 0, "Amount must be greater than 0");
+
+        bytes32 scidHash = keccak256(bytes(scid));
+
+        // Check daily limit
+        uint256 currentDay = block.timestamp / 1 days;
+        if (lastRewardDay[scidHash] != currentDay) {
+            dailyRewardsByScid[scidHash] = 0;
+            lastRewardDay[scidHash] = currentDay;
+        }
+
+        require(
+            dailyRewardsByScid[scidHash] + totalAmount <= MAX_DAILY_REWARDS,
+            "Daily limit reached for this track"
+        );
+
+        // Validate amount
+        uint256 expectedRate = isNft ? NFT_REWARD_RATE : BASE_REWARD_RATE;
+        require(totalAmount <= expectedRate * 10, "Amount exceeds max per claim");
+
+        // Collect protocol fee (0.05%) first
+        uint256 netAmount = _collectProtocolFee(totalAmount, scidHash);
+
+        // Calculate split from net amount
+        uint256 listenerAmount = (netAmount * listenerSplitBps) / BASIS_POINTS;
+        uint256 creatorAmount = netAmount - listenerAmount;
+
+        // Update tracking
+        dailyRewardsByScid[scidHash] += totalAmount;
+        claimedByScid[scidHash] += totalAmount;
+        claimedByWallet[creator] += creatorAmount;
+        claimedByWallet[listener] += listenerAmount;
+        totalRewardsDistributed += totalAmount;
+        totalCreatorRewards += creatorAmount;
+        totalListenerRewards += listenerAmount;
+
+        // Transfer OGUN to both parties
+        if (creatorAmount > 0) {
+            ogunToken.safeTransfer(creator, creatorAmount);
+        }
+        if (listenerAmount > 0) {
+            ogunToken.safeTransfer(listener, listenerAmount);
+        }
+
+        emit ListenerRewardClaimed(listener, creator, listenerAmount, creatorAmount, scidHash);
+    }
+
+    /**
+     * @notice Submit reward with collaborator splits
+     * @param creator Address of the primary creator
+     * @param collaborators Array of collaborator addresses
+     * @param collaboratorBps Array of collaborator split percentages (in basis points)
+     * @param scid The SCid string
+     * @param totalAmount Total OGUN reward to distribute
+     * @param isNft Whether this is an NFT track
+     */
+    function submitRewardWithCollaborators(
+        address creator,
+        address[] calldata collaborators,
+        uint256[] calldata collaboratorBps,
+        string calldata scid,
+        uint256 totalAmount,
+        bool isNft
+    ) external onlyAuthorizedDistributor whenNotPaused nonReentrant {
+        require(creator != address(0), "Invalid creator address");
+        require(collaborators.length == collaboratorBps.length, "Array length mismatch");
+        require(collaborators.length <= 10, "Too many collaborators");
+        require(totalAmount > 0, "Amount must be greater than 0");
+
+        bytes32 scidHash = keccak256(bytes(scid));
+
+        // Check daily limit
+        uint256 currentDay = block.timestamp / 1 days;
+        if (lastRewardDay[scidHash] != currentDay) {
+            dailyRewardsByScid[scidHash] = 0;
+            lastRewardDay[scidHash] = currentDay;
+        }
+
+        require(
+            dailyRewardsByScid[scidHash] + totalAmount <= MAX_DAILY_REWARDS,
+            "Daily limit reached for this track"
+        );
+
+        // Validate amount
+        uint256 expectedRate = isNft ? NFT_REWARD_RATE : BASE_REWARD_RATE;
+        require(totalAmount <= expectedRate * 10, "Amount exceeds max per claim");
+
+        // Collect protocol fee (0.05%) first
+        uint256 netAmount = _collectProtocolFee(totalAmount, scidHash);
+
+        // Calculate and validate total collaborator percentage
+        uint256 totalCollabBps = 0;
+        for (uint256 i = 0; i < collaboratorBps.length; i++) {
+            totalCollabBps += collaboratorBps[i];
+        }
+        require(totalCollabBps < BASIS_POINTS, "Collaborator splits exceed 100%");
+
+        // Update tracking
+        dailyRewardsByScid[scidHash] += totalAmount;
+        claimedByScid[scidHash] += totalAmount;
+        totalRewardsDistributed += totalAmount;
+
+        uint256 totalCollaboratorAmount = 0;
+
+        // Distribute to collaborators (from net amount after fee)
+        for (uint256 i = 0; i < collaborators.length; i++) {
+            if (collaborators[i] != address(0) && collaboratorBps[i] > 0) {
+                uint256 collabAmount = (netAmount * collaboratorBps[i]) / BASIS_POINTS;
+                totalCollaboratorAmount += collabAmount;
+                claimedByWallet[collaborators[i]] += collabAmount;
+                ogunToken.safeTransfer(collaborators[i], collabAmount);
+                emit CollaboratorRewardClaimed(collaborators[i], collabAmount, scidHash);
+            }
+        }
+
+        // Remainder goes to creator
+        uint256 creatorAmount = netAmount - totalCollaboratorAmount;
+        claimedByWallet[creator] += creatorAmount;
+        totalCreatorRewards += creatorAmount;
+        totalCollaboratorRewards += totalCollaboratorAmount;
+
+        ogunToken.safeTransfer(creator, creatorAmount);
+        emit RewardsClaimed(creator, creatorAmount, scidHash);
+    }
+
+    /**
+     * @notice Submit reward with full split: listener + creator + collaborators
+     * @param creator Address of the primary creator
+     * @param listener Address of the listener/streamer
+     * @param collaborators Array of collaborator addresses
+     * @param collaboratorBps Array of collaborator split percentages (in basis points, applied to creator share)
+     * @param scid The SCid string
+     * @param totalAmount Total OGUN reward to distribute
+     * @param isNft Whether this is an NFT track
+     */
+    function submitRewardFull(
+        address creator,
+        address listener,
+        address[] calldata collaborators,
+        uint256[] calldata collaboratorBps,
+        string calldata scid,
+        uint256 totalAmount,
+        bool isNft
+    ) external onlyAuthorizedDistributor whenNotPaused nonReentrant {
+        require(creator != address(0), "Invalid creator address");
+        require(listener != address(0), "Invalid listener address");
+        require(collaborators.length == collaboratorBps.length, "Array length mismatch");
+        require(collaborators.length <= 10, "Too many collaborators");
+        require(totalAmount > 0, "Amount must be greater than 0");
+
+        bytes32 scidHash = keccak256(bytes(scid));
+
+        // Check daily limit
+        uint256 currentDay = block.timestamp / 1 days;
+        if (lastRewardDay[scidHash] != currentDay) {
+            dailyRewardsByScid[scidHash] = 0;
+            lastRewardDay[scidHash] = currentDay;
+        }
+
+        require(
+            dailyRewardsByScid[scidHash] + totalAmount <= MAX_DAILY_REWARDS,
+            "Daily limit reached for this track"
+        );
+
+        // Validate amount
+        uint256 expectedRate = isNft ? NFT_REWARD_RATE : BASE_REWARD_RATE;
+        require(totalAmount <= expectedRate * 10, "Amount exceeds max per claim");
+
+        // Collect protocol fee (0.05%) first
+        uint256 netAmount = _collectProtocolFee(totalAmount, scidHash);
+
+        // Calculate listener share first (from net amount after fee)
+        uint256 listenerAmount = (netAmount * listenerSplitBps) / BASIS_POINTS;
+        uint256 creatorPoolAmount = netAmount - listenerAmount;
+
+        // Calculate and validate collaborator percentages (from creator pool)
+        uint256 totalCollabBps = 0;
+        for (uint256 i = 0; i < collaboratorBps.length; i++) {
+            totalCollabBps += collaboratorBps[i];
+        }
+        require(totalCollabBps < BASIS_POINTS, "Collaborator splits exceed 100%");
+
+        // Update tracking
+        dailyRewardsByScid[scidHash] += totalAmount;
+        claimedByScid[scidHash] += totalAmount;
+        totalRewardsDistributed += totalAmount;
+
+        uint256 totalCollaboratorAmount = 0;
+
+        // Distribute to collaborators (from creator pool)
+        for (uint256 i = 0; i < collaborators.length; i++) {
+            if (collaborators[i] != address(0) && collaboratorBps[i] > 0) {
+                uint256 collabAmount = (creatorPoolAmount * collaboratorBps[i]) / BASIS_POINTS;
+                totalCollaboratorAmount += collabAmount;
+                claimedByWallet[collaborators[i]] += collabAmount;
+                ogunToken.safeTransfer(collaborators[i], collabAmount);
+                emit CollaboratorRewardClaimed(collaborators[i], collabAmount, scidHash);
+            }
+        }
+
+        // Remainder of creator pool goes to creator
+        uint256 creatorAmount = creatorPoolAmount - totalCollaboratorAmount;
+
+        // Update balances
+        claimedByWallet[creator] += creatorAmount;
+        claimedByWallet[listener] += listenerAmount;
+        totalCreatorRewards += creatorAmount;
+        totalListenerRewards += listenerAmount;
+        totalCollaboratorRewards += totalCollaboratorAmount;
+
+        // Transfer
+        if (creatorAmount > 0) {
+            ogunToken.safeTransfer(creator, creatorAmount);
+        }
+        if (listenerAmount > 0) {
+            ogunToken.safeTransfer(listener, listenerAmount);
+        }
+
+        emit ListenerRewardClaimed(listener, creator, listenerAmount, creatorAmount, scidHash);
     }
 
     // ==================== VIEW FUNCTIONS ====================
