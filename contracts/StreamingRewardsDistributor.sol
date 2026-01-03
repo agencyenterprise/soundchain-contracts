@@ -346,26 +346,22 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
                 continue;
             }
 
+            // Collect protocol fee (0.05%)
+            uint256 netAmount = _collectProtocolFee(amounts[i], scidHash);
+
             // Update tracking
             dailyRewardsByScid[scidHash] += amounts[i];
             claimedByScid[scidHash] += amounts[i];
-            claimedByWallet[users[i]] += amounts[i];
+            claimedByWallet[users[i]] += netAmount;
             totalAmount += amounts[i];
 
-            emit RewardsClaimed(users[i], amounts[i], scidHash);
+            // Transfer immediately to each user (after fee)
+            ogunToken.safeTransfer(users[i], netAmount);
+
+            emit RewardsClaimed(users[i], netAmount, scidHash);
         }
 
         totalRewardsDistributed += totalAmount;
-
-        // Batch transfer - more gas efficient
-        // Note: This requires all rewards go to same user for efficiency
-        // For different users, transfer individually in the loop
-        for (uint256 i = 0; i < users.length; i++) {
-            if (amounts[i] > 0 && claimedByWallet[users[i]] > 0) {
-                // Transfer accumulated amount
-                // Note: This is simplified - production should track per-batch amounts
-            }
-        }
     }
 
     /**

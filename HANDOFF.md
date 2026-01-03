@@ -2,7 +2,7 @@
 
 **Priority: HIGH - Blockchain Optimization Phase**
 **Last Updated: January 2, 2026**
-**Status: StreamingRewardsDistributor Ready for Deployment**
+**Status: StreamingRewardsDistributor DEPLOYED - Awaiting Funding**
 
 ---
 
@@ -63,9 +63,19 @@ POLYGONSCAN_API_KEY=YIX26G28GVEREYG43W391ZSBYQIME2VYD5
 
 | Contract | Address | Status |
 |----------|---------|--------|
-| OGUN Token | `0x99Db69EEe7637101FA216Ab4A3276eBedC63e146` | LIVE |
+| OGUN Token | `0x45f1af89486aeec2da0b06340cd9cd3bd741a15c` | LIVE |
 | Marketplace | `0x...` | LIVE |
-| StreamingRewardsDistributor | **PENDING DEPLOYMENT** | Ready |
+| StreamingRewardsDistributor v2 | `0xcf9416c49D525f7a50299c71f33606A158F28546` | **LIVE** |
+
+**Note:** v1 (`0xc8aEd...`) used wrong OGUN address - DO NOT USE
+
+### Funding Status (Jan 2, 2026)
+- Contract deployed & configured ✅
+- Protocol fee: 0.05% (5 bps) → KMS wallet ✅
+- Distributor authorized: KMS wallet ✅
+- **PENDING:** Fund with OGUN from founders wallet
+- Treasury Safe (AE controls): `0xa117469560089210e2d298780a95ace536c59ae9` (670M OGUN)
+- Send OGUN to: `0xcf9416c49D525f7a50299c71f33606A158F28546`
 
 ---
 
@@ -110,8 +120,8 @@ AWS_KMS_KEY_ID=267075a7-2547-48a8-a737-49d13ddd1146
 # Polygon Mainnet
 POLYGON_ALCHEMY_URL=https://polygon-mainnet.g.alchemy.com/v2/-6cS3AFE-iS1ZCnh-bNLQGRM1Gif9t-8
 
-# OGUN Token
-OGUN_TOKEN_ADDRESS=0x99Db69EEe7637101FA216Ab4A3276eBedC63e146
+# OGUN Token (CORRECT ADDRESS - matches deployed contract table)
+OGUN_TOKEN_ADDRESS=0x45f1af89486aeec2da0b06340cd9cd3bd741a15c
 
 # Verification
 POLYGONSCAN_API_KEY=YIX26G28GVEREYG43W391ZSBYQIME2VYD5
