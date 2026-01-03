@@ -8,6 +8,14 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 
 /**
+ * @title IStakingRewards
+ * @notice Interface for StakingRewards contract stakeFor function
+ */
+interface IStakingRewards {
+    function stakeFor(address _user, uint256 _amount) external;
+}
+
+/**
  * @title StreamingRewardsDistributor
  * @notice Distributes OGUN tokens to artists and listeners based on streaming activity
  * @dev Called by authorized backend service after validating stream data
@@ -288,13 +296,11 @@ contract StreamingRewardsDistributor is Ownable, ReentrancyGuard, Pausable {
         claimedByWallet[user] += amount;
         totalRewardsDistributed += amount;
 
-        // Approve and stake on behalf of user
+        // Approve staking contract to spend OGUN
         ogunToken.safeApprove(stakingContract, amount);
 
-        // Note: This requires the staking contract to support staking on behalf of users
-        // For now, we transfer to user and they must stake manually
-        // TODO: Implement stakeFor in StakingRewards contract
-        ogunToken.safeTransfer(user, amount);
+        // Stake on behalf of user using stakeFor
+        IStakingRewards(stakingContract).stakeFor(user, amount);
 
         emit RewardsStaked(user, amount, scidHash);
     }

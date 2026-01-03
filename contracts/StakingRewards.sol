@@ -184,6 +184,27 @@ contract StakingRewards is Ownable, ReentrancyGuard {
         emit Stake(msg.sender, _amount);
     }
 
+    /**
+     * @notice Stake tokens on behalf of another user (for StreamingRewardsDistributor)
+     * @dev Only callable by authorized contracts (e.g., StreamingRewardsDistributor)
+     * @param _user The address to stake tokens for
+     * @param _amount The amount to stake
+     */
+    function stakeFor(address _user, uint256 _amount) external nonReentrant updateRewardMod {
+        require(_amount > 0, "StakeFor: Amount must be greater than 0");
+        require(_user != address(0), "StakeFor: Cannot stake for zero address");
+
+        // Transfer tokens from caller (StreamingRewardsDistributor) to this contract
+        stakingToken.safeTransferFrom(msg.sender, address(this), _amount);
+
+        // Credit the stake to the user's account
+        _totalStaked = _totalStaked.add(_amount);
+        _stakedBalances[_user] = _stakedBalances[_user].add(_amount);
+        addAddress(_user);
+
+        emit Stake(_user, _amount);
+    }
+
     function updateReward() external {
         _updateReward();
     }
