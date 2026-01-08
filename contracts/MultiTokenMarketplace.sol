@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
  * @dev Upgradeable proxy contract with ZetaChain cross-chain integration
  *
  * Supported Tokens (32):
- * MATIC, OGUN, PENGU, ETH, USDC, USDT, SOL, BNB, DOGE, BONK,
+ * POL, OGUN, PENGU, ETH, USDC, USDT, SOL, BNB, DOGE, BONK,
  * MEATEOR, PEPE, BASE, XTZ, AVAX, SHIB, XRP, SUI, HBAR, LINK,
  * LTC, ZETA, BTC, YZY, ADA, DOT, ATOM, FTM, NEAR, OP, ARB, ONDO
  *

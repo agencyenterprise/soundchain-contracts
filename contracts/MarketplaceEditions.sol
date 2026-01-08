@@ -21,7 +21,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     using SafeMath for uint256;
 
     // Payment types enum to reduce stack depth (instead of multiple bools)
-    enum PaymentType { MATIC, OGUN, BTC, DOGE, PENGU, BONK, MEATEOR }
+    enum PaymentType { POL, OGUN, BTC, DOGE, PENGU, BONK, MEATEOR }
 
     uint256 public rewardsRate;
     uint256 public rewardsLimit;
@@ -54,7 +54,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
 
     // Prices struct to reduce storage slots
     struct TokenPrices {
-        uint256 MATIC;
+        uint256 POL;
         uint256 OGUN;
         uint256 BTC;
         uint256 DOGE;
@@ -66,7 +66,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     struct Listing {
         uint256 quantity;
         TokenPrices prices;
-        uint8 acceptedPayments; // Bitmask: 0x01=MATIC, 0x02=OGUN, 0x04=BTC, 0x08=DOGE, 0x10=PENGU, 0x20=BONK, 0x40=MEATEOR
+        uint8 acceptedPayments; // Bitmask: 0x01=POL, 0x02=OGUN, 0x04=BTC, 0x08=DOGE, 0x10=PENGU, 0x20=BONK, 0x40=MEATEOR
         uint256 startingTime;
         uint256 chainId;
     }
@@ -161,7 +161,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         address _nftAddress,
         uint256 _tokenId,
         uint256 _quantity,
-        uint256[7] calldata _prices, // [MATIC, OGUN, BTC, DOGE, PENGU, BONK, MEATEOR]
+        uint256[7] calldata _prices, // [POL, OGUN, BTC, DOGE, PENGU, BONK, MEATEOR]
         uint8 _acceptedPayments, // Bitmask
         uint256 _startingTime,
         uint256 _chainId
@@ -176,7 +176,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         listings[_nftAddress][_tokenId][_msgSender()] = Listing({
             quantity: _quantity,
             prices: TokenPrices({
-                MATIC: _prices[0],
+                POL: _prices[0],
                 OGUN: _prices[1],
                 BTC: _prices[2],
                 DOGE: _prices[3],
@@ -207,7 +207,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
 
         Listing storage listedItem = listings[_nftAddress][_tokenId][_msgSender()];
         listedItem.prices = TokenPrices({
-            MATIC: _prices[0],
+            POL: _prices[0],
             OGUN: _prices[1],
             BTC: _prices[2],
             DOGE: _prices[3],
@@ -248,8 +248,8 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
         uint256 feeAmount = totalPrice.mul(platformFee).div(1e4);
 
         // Handle payment
-        if (_paymentType == PaymentType.MATIC) {
-            require(msg.value >= totalPrice, "Insufficient MATIC");
+        if (_paymentType == PaymentType.POL) {
+            require(msg.value >= totalPrice, "Insufficient POL");
             (bool feeSuccess, ) = feeRecipient.call{value: feeAmount}("");
             require(feeSuccess, "fee transfer failed");
         } else if (_paymentType == PaymentType.BTC) {
@@ -285,7 +285,7 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     }
 
     function _getPrice(Listing storage _listing, PaymentType _type) private view returns (uint256) {
-        if (_type == PaymentType.MATIC) return _listing.prices.MATIC;
+        if (_type == PaymentType.POL) return _listing.prices.POL;
         if (_type == PaymentType.OGUN) return _listing.prices.OGUN;
         if (_type == PaymentType.BTC) return _listing.prices.BTC;
         if (_type == PaymentType.DOGE) return _listing.prices.DOGE;
@@ -296,9 +296,9 @@ contract SoundchainMarketplaceEditions is Ownable, ReentrancyGuard {
     }
 
     function _transferPayment(PaymentType _type, address _from, address _to, uint256 _amount) private {
-        if (_type == PaymentType.MATIC) {
+        if (_type == PaymentType.POL) {
             (bool success, ) = payable(_to).call{value: _amount}("");
-            require(success, "MATIC transfer failed");
+            require(success, "POL transfer failed");
         } else {
             IERC20 token = IERC20(paymentTokenAddresses[_type]);
             if (_from == address(this)) {
