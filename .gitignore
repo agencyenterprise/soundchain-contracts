@@ -9,3 +9,6 @@ coverage.json
 abi
 typechain
 .vscode/
+HANDOFF.md
+.DS_Store
+*.DS_Store

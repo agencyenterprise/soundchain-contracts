@@ -66,7 +66,7 @@ const config: HardhatUserConfig = {
   networks: {
     // ============ Testnets ============
     mumbai: {
-      url: "https://polygon-mumbai.g.alchemy.com/v2/PTbEov9b9XjfTgmiT9nuDM80Wl98Qg3t",
+      url: process.env.MUMBAI_RPC_URL || "https://rpc-amoy.polygon.technology",
       accounts,
       gasPrice: 8000000000,
     },
@@ -89,7 +89,7 @@ const config: HardhatUserConfig = {
 
     // ============ Mainnets ============
     polygon: {
-      url: process.env.POLYGON_RPC_URL || "https://polygon-rpc.com",
+      url: process.env.POLYGON_ALCHEMY_URL || process.env.POLYGON_RPC_URL || "https://polygon-rpc.com",
       accounts,
       chainId: 137,
     },
